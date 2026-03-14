@@ -317,6 +317,17 @@ body {
   overflow: visible;
 }
 
+/* Markdown inside feed items */
+.feed-item-body p { margin: 0 0 6px; }
+.feed-item-body p:last-child { margin-bottom: 0; }
+.feed-item-body strong { color: var(--text-primary); }
+.feed-item-body a { color: var(--accent); text-decoration: none; }
+.feed-item-body a:hover { text-decoration: underline; }
+.feed-item-body ul, .feed-item-body ol { margin: 4px 0; padding-left: 18px; }
+.feed-item-body li { margin-bottom: 2px; }
+.feed-item-body code { background: rgba(255,255,255,0.06); padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+.feed-item-body blockquote { margin: 6px 0; padding: 4px 10px; border-left: 3px solid var(--accent); opacity: 0.85; }
+
 .feed-item-images {
   display: flex;
   gap: 8px;

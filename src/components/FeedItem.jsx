@@ -1,4 +1,6 @@
 import { useState } from "react";
+import Markdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 
 function timeAgo(timestamp) {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -36,9 +38,9 @@ export default function FeedItem({ item, onOpenReceipt }) {
         <span className="feed-item-time">{timeAgo(item.timestamp)}</span>
       </div>
       <h3 className="feed-item-title">{item.title}</h3>
-      <p className={`feed-item-body ${expanded ? "expanded" : ""}`}>
-        {item.body}
-      </p>
+      <div className={`feed-item-body ${expanded ? "expanded" : ""}`}>
+        <Markdown rehypePlugins={[rehypeRaw]}>{item.body}</Markdown>
+      </div>
       {item.images && item.images.length > 0 && (
         <div className="feed-item-images">
           {item.images.map((img, i) => (
