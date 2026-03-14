@@ -1,45 +1,90 @@
-const BASE = "/api";
+import { getConnection } from "../lib/connection.js";
 
-async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
+function request(path, options = {}) {
+  const conn = getConnection();
+  if (!conn) throw new Error("Not connected");
+  const headers = { "Content-Type": "application/json", ...options.headers };
+  headers["Authorization"] = `Bearer ${conn.apiKey}`;
+  return fetch(`${conn.serverUrl}${path}`, { ...options, headers }).then((r) => {
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return r.json();
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
+}
+
+export function getWsUrl(path) {
+  const conn = getConnection();
+  if (!conn) return null;
+  const wsBase = conn.serverUrl.replace(/^http/, "ws");
+  return `${wsBase}${path}?token=${conn.apiKey}`;
+}
+
+export function getWorkspace() {
+  const conn = getConnection();
+  return conn?.primaryWorkspace || "fathom";
 }
 
 export function getFeed() {
-  return request("/feed");
+  return request("/api/feed");
 }
 
 export function getRoutines() {
-  return request("/routines");
+  return request("/api/routines");
 }
 
 export function fireRoutine(id) {
-  return request(`/routines/${id}/fire`);
+  return request(`/api/routines/${id}/fire`);
 }
 
 export function getChat() {
-  return request("/chat");
+  return request("/api/chat");
 }
 
-export function sendChat(text) {
-  return request("/chat", {
+export function sendMessage(text) {
+  const ws = getWorkspace();
+  return request(`/api/conversation/${ws}/send`, {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ message: text }),
   });
 }
 
+export function getConversation() {
+  const ws = getWorkspace();
+  return request(`/api/conversation/${ws}`);
+}
+
 export function getWorkspaces() {
-  return request("/workspaces");
+  return request("/api/workspaces");
 }
 
 export function getWeather() {
-  return request("/weather");
+  return request("/api/weather");
 }
 
 export function getReceipt(id) {
-  return request(`/receipts/${id}`);
+  return request(`/api/receipts/${id}`);
+}
+
+export async function testConnection(serverUrl, apiKey) {
+  const cleaned = serverUrl.replace(/\/+$/, "");
+
+  // First: check reachability (no auth required)
+  const versionRes = await fetch(`${cleaned}/api/version`);
+  if (!versionRes.ok) throw new Error(`Server unreachable (${versionRes.status})`);
+  const version = await versionRes.json();
+
+  // Second: validate key against an authenticated endpoint
+  const authRes = await fetch(`${cleaned}/api/workspaces/profiles`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (authRes.status === 401) throw new Error("Invalid API key");
+  if (authRes.status === 403) throw new Error("Key lacks admin access");
+  if (!authRes.ok) throw new Error(`Auth check failed (${authRes.status})`);
+
+  const data = await authRes.json();
+
+  // Find the primary workspace from server config
+  const workspaceNames = Object.keys(data.profiles || data);
+  const primaryWorkspace = workspaceNames.includes("fathom") ? "fathom" : workspaceNames[0] || "fathom";
+
+  return { version: version.current, primaryWorkspace };
 }

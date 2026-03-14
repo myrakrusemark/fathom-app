@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { getChat, sendChat } from "../api/client.js";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { getWsUrl, getWorkspace, sendMessage } from "../api/client.js";
 
 function timeAgo(timestamp) {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -15,7 +15,6 @@ function renderMarkdown(text) {
   const parts = text.split("\n\n");
   return parts.map((block, i) => {
     const trimmed = block.trim();
-    // Ordered list
     if (/^\d+\.\s/.test(trimmed)) {
       const items = trimmed.split(/\n/).filter(Boolean);
       return (
@@ -26,7 +25,6 @@ function renderMarkdown(text) {
         </ol>
       );
     }
-    // Unordered list
     if (/^[-*]\s/.test(trimmed)) {
       const items = trimmed.split(/\n/).filter(Boolean);
       return (
@@ -43,7 +41,6 @@ function renderMarkdown(text) {
 
 function inlineMarkdown(text) {
   const tokens = [];
-  // Regex for **bold**, *italic*, `code`, [link](url)
   const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
   let lastIndex = 0;
   let match;
@@ -61,7 +58,7 @@ function inlineMarkdown(text) {
       tokens.push(
         <a key={match.index} href={match[6]} className="chat-md-link" onClick={(e) => e.stopPropagation()}>
           {match[5]}
-        </a>
+        </a>,
       );
     }
     lastIndex = match.index + match[0].length;
@@ -96,6 +93,24 @@ function VoiceMessage({ msg }) {
   );
 }
 
+function ToolIndicator({ msg }) {
+  return (
+    <div className="chat-tool-use">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
+      </svg>
+      <span className="chat-tool-name">{msg.name || "working"}</span>
+      {msg.status === "running" && (
+        <span className="chat-tool-status">
+          <span className="chat-working-dot" />
+          <span className="chat-working-dot" />
+          <span className="chat-working-dot" />
+        </span>
+      )}
+    </div>
+  );
+}
+
 function ChatMessage({ msg }) {
   const isUser = msg.role === "user";
 
@@ -117,6 +132,10 @@ function ChatMessage({ msg }) {
         <span className="chat-working-dot" />
       </div>
     );
+  }
+
+  if (msg.type === "tool") {
+    return <ToolIndicator msg={msg} />;
   }
 
   return (
@@ -171,25 +190,110 @@ const FRESH_CHAT_MESSAGES = [
   },
 ];
 
+let msgCounter = 0;
+
+function eventToMessage(event) {
+  const id = `ws-${++msgCounter}`;
+  const timestamp = event.timestamp || new Date().toISOString();
+
+  switch (event.event_type) {
+    case "assistant":
+      return { id, role: "agent", type: "text", text: event.data?.content || "", timestamp, memories: event.data?.memories || 0 };
+    case "user":
+      return { id, role: "user", type: "text", text: event.data?.content || "", timestamp, memories: 0 };
+    case "tool_use":
+      return { id, role: "agent", type: "tool", name: event.data?.name || "tool", status: event.data?.status || "done", timestamp };
+    case "thinking":
+      return { id, role: "agent", type: "working", timestamp };
+    case "error":
+      return { id, role: "agent", type: "text", text: `Error: ${event.data?.message || "unknown"}`, timestamp, memories: 0 };
+    default:
+      return null;
+  }
+}
+
 export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, feedMode }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const sheetRef = useRef(null);
+  const wsRef = useRef(null);
+
+  const connectWs = useCallback(() => {
+    const ws = getWorkspace();
+    const url = getWsUrl(`/ws/conversation/${ws}`);
+    if (!url) return;
+
+    const socket = new WebSocket(url);
+    wsRef.current = socket;
+
+    socket.onopen = () => setWsConnected(true);
+
+    socket.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+
+        if (data.type === "history" && Array.isArray(data.events)) {
+          const msgs = data.events.map(eventToMessage).filter(Boolean);
+          setMessages(msgs);
+          return;
+        }
+
+        if (data.type === "event") {
+          const msg = eventToMessage(data);
+          if (msg) {
+            // Replace working indicator with actual message
+            if (msg.type !== "working") {
+              setMessages((prev) => prev.filter((m) => m.type !== "working").concat(msg));
+            } else {
+              setMessages((prev) => {
+                if (prev.some((m) => m.type === "working")) return prev;
+                return [...prev, msg];
+              });
+            }
+          }
+          return;
+        }
+
+        // ping events — ignore for now
+      } catch {
+        // ignore parse errors
+      }
+    };
+
+    socket.onclose = () => {
+      setWsConnected(false);
+      wsRef.current = null;
+    };
+
+    socket.onerror = () => {
+      setWsConnected(false);
+    };
+  }, []);
+
+  const disconnectWs = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setWsConnected(false);
+  }, []);
 
   useEffect(() => {
     if (open) {
       if (feedMode === "fresh") {
         setMessages(FRESH_CHAT_MESSAGES);
       } else {
-        getChat()
-          .then((data) => setMessages(data.messages))
-          .catch(console.error);
+        connectWs();
       }
+    } else {
+      disconnectWs();
     }
-  }, [open, feedMode]);
+    return () => disconnectWs();
+  }, [open, feedMode, connectWs, disconnectWs]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -217,11 +321,30 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
     setInput("");
     setSending(true);
 
+    // Optimistically add user message
+    const userMsg = {
+      id: `local-${++msgCounter}`,
+      role: "user",
+      type: "text",
+      text,
+      timestamp: new Date().toISOString(),
+      memories: 0,
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
     try {
-      const { userMsg, agentMsg } = await sendChat(text);
-      setMessages((prev) => [...prev, userMsg, agentMsg]);
+      await sendMessage(text);
+      // Response will come through WebSocket
     } catch (err) {
-      console.error(err);
+      const errMsg = {
+        id: `err-${++msgCounter}`,
+        role: "agent",
+        type: "text",
+        text: `Failed to send: ${err.message}`,
+        timestamp: new Date().toISOString(),
+        memories: 0,
+      };
+      setMessages((prev) => [...prev, errMsg]);
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -245,7 +368,12 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
           <div className="handle-bar" />
         </div>
         <div className="chat-sheet-header">
-          <span className="chat-sheet-title">fathom</span>
+          <span className="chat-sheet-title">
+            fathom
+            {open && !feedMode.startsWith("fresh") && (
+              <span className={`connection-dot inline ${wsConnected ? "connected" : "disconnected"}`} />
+            )}
+          </span>
           <button className="chat-sheet-close" onClick={onClose}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
               <path d="M6 18L18 6M6 6l12 12" />
