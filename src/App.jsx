@@ -20,6 +20,7 @@ export default function App() {
   const [userName, setUserName] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [connected, setConnected] = useState(isConnected());
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleConnectionChange = useCallback(() => {
     setConnected(isConnected());
@@ -27,6 +28,7 @@ export default function App() {
 
   function handleVoiceResult(text) {
     setPendingVoice(text);
+    setUnreadCount(0);
     setChatOpen(true);
   }
 
@@ -80,22 +82,24 @@ export default function App() {
         <Routes>
           <Route path="/" element={
             <Feed
-              onChatOpen={() => setChatOpen(true)}
+              onChatOpen={() => { setUnreadCount(0); setChatOpen(true); }}
               onOpenReceipt={(id) => setReceiptId(id)}
               onStartTour={() => setShowOnboarding(true)}
               feedMode={feedMode}
               onToggleMode={handleToggleMode}
               userName={userName}
               selectedInterests={selectedInterests}
+              unreadCount={unreadCount}
             />
           } />
           <Route path="/routines" element={<Routines />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <NavBar
-          onChatOpen={() => setChatOpen(true)}
+          onChatOpen={() => { setUnreadCount(0); setChatOpen(true); }}
           onVoiceResult={handleVoiceResult}
           onSettingsOpen={() => setSettingsOpen(true)}
+          unreadCount={unreadCount}
         />
         <ChatSheet
           open={chatOpen}
@@ -103,6 +107,7 @@ export default function App() {
           consumeVoice={consumeVoice}
           pendingVoice={pendingVoice}
           feedMode={feedMode}
+          onUnread={(count) => setUnreadCount((prev) => prev + count)}
         />
         <ReceiptDetail
           receiptId={receiptId}

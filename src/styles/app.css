@@ -676,8 +676,21 @@ body {
 }
 
 .chat-presence svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
+}
+
+.chat-presence-label {
+  margin-left: 6px;
+  font-size: 11px;
+}
+
+.chat-meta-event {
+  align-self: center;
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.4;
+  padding: 4px 12px;
 }
 
 /* Chat working — agent is processing */

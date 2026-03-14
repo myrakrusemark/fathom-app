@@ -125,6 +125,7 @@ export default function Feed({
   onToggleMode,
   userName,
   selectedInterests,
+  unreadCount = 0,
 }) {
   // Lived mode state
   const [newItems, setNewItems] = useState([]);
@@ -278,12 +279,14 @@ export default function Feed({
         </>
       ) : (
         <>
-          <div className="feed-unread-banner" onClick={onChatOpen}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-              <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <span>4 new messages from fathom</span>
-          </div>
+          {unreadCount > 0 && (
+            <div className="feed-unread-banner" onClick={onChatOpen}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span>{unreadCount} new {unreadCount === 1 ? "message" : "messages"} from fathom</span>
+            </div>
+          )}
 
           <div className="feed">
             {renderGroups(groupByWorkspace(newItems), onOpenReceipt)}

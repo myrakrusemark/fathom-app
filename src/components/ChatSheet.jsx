@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getWsUrl, getWorkspace, sendMessage } from "../api/client.js";
+import ThoughtBubble from "./ThoughtBubble.jsx";
 
 function timeAgo(timestamp) {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -93,13 +94,47 @@ function VoiceMessage({ msg }) {
   );
 }
 
+/** Clean up MCP tool names for display and pick an appropriate icon. */
+function toolDisplay(name) {
+  if (!name) return { label: "working", icon: "tool" };
+  // Memory operations get the cloud icon
+  if (name.includes("memento_remember") || name.includes("memento_recall")) {
+    return { label: "remembering", icon: "memory" };
+  }
+  if (name.includes("memento_consolidate")) {
+    return { label: "consolidating memories", icon: "memory" };
+  }
+  if (name.includes("memento_item_create") || name.includes("memento_item_update")) {
+    return { label: "updating memory", icon: "memory" };
+  }
+  if (name.includes("memento_")) {
+    const short = name.replace(/^mcp__memento__/, "").replace(/^memento_/, "");
+    return { label: short, icon: "memory" };
+  }
+  // Telegram
+  if (name.includes("telegram_send")) return { label: "sending message", icon: "tool" };
+  if (name.includes("telegram_read")) return { label: "reading messages", icon: "tool" };
+  // Vault
+  if (name.includes("vault_search") || name.includes("vault_vsearch") || name.includes("vault_query")) {
+    return { label: "searching vault", icon: "tool" };
+  }
+  // Strip MCP prefixes for everything else
+  const clean = name.replace(/^mcp__[^_]+__/, "");
+  return { label: clean, icon: "tool" };
+}
+
 function ToolIndicator({ msg }) {
+  const { label, icon } = toolDisplay(msg.name);
   return (
     <div className="chat-tool-use">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
-      </svg>
-      <span className="chat-tool-name">{msg.name || "working"}</span>
+      {icon === "memory" ? (
+        <ThoughtBubble size={20} color="var(--accent)" />
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+          <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
+        </svg>
+      )}
+      <span className="chat-tool-name">{label}</span>
       {msg.status === "running" && (
         <span className="chat-tool-status">
           <span className="chat-working-dot" />
@@ -117,9 +152,18 @@ function ChatMessage({ msg }) {
   if (msg.type === "presence") {
     return (
       <div className="chat-presence">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
           <path d="M20 6L9 17l-5-5" />
         </svg>
+        {msg.label && <span className="chat-presence-label">{msg.label}</span>}
+      </div>
+    );
+  }
+
+  if (msg.type === "meta") {
+    return (
+      <div className="chat-meta-event">
+        <span>{msg.label}</span>
       </div>
     );
   }
@@ -166,11 +210,7 @@ function ChatMessage({ msg }) {
         <span className="chat-time">{timeAgo(msg.timestamp)}</span>
         {msg.memories > 0 && (
           <span className="chat-memories">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="12" height="12">
-              <path d="M7.5 3.5a5.5 5.5 0 019.32 4.7A4 4 0 0118 16H6a4 4 0 01-.78-7.92A5.5 5.5 0 017.5 3.5z" />
-              <circle cx="7" cy="19.5" r="1.2" />
-              <circle cx="5" cy="22" r="0.8" />
-            </svg>
+            <ThoughtBubble size={12} />
             {msg.memories}
           </span>
         )}
@@ -192,35 +232,170 @@ const FRESH_CHAT_MESSAGES = [
 
 let msgCounter = 0;
 
-function eventToMessage(event) {
-  const id = `ws-${++msgCounter}`;
-  const timestamp = event.timestamp || new Date().toISOString();
-
-  switch (event.event_type) {
-    case "assistant":
-      return { id, role: "agent", type: "text", text: event.data?.content || "", timestamp, memories: event.data?.memories || 0 };
-    case "user":
-      return { id, role: "user", type: "text", text: event.data?.content || "", timestamp, memories: 0 };
-    case "tool_use":
-      return { id, role: "agent", type: "tool", name: event.data?.name || "tool", status: event.data?.status || "done", timestamp };
-    case "thinking":
-      return { id, role: "agent", type: "working", timestamp };
-    case "error":
-      return { id, role: "agent", type: "text", text: `Error: ${event.data?.message || "unknown"}`, timestamp, memories: 0 };
-    default:
-      return null;
+/** Extract plain text from content — handles string, content block array, or object. */
+function extractText(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text || "")
+      .join("");
   }
+  if (content && typeof content === "object") return content.text || "";
+  return "";
 }
 
-export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, feedMode }) {
+/** Convert a raw conversation event into one or more renderable messages.
+ *  Returns an array since one assistant event can contain text + tool_use blocks. */
+function eventToMessages(event) {
+  const evType = event.type || event.event_type;
+  const data = event.data || {};
+  // Timestamps come as Unix seconds from the server
+  const ts = event.timestamp
+    ? typeof event.timestamp === "number"
+      ? new Date(event.timestamp * 1000).toISOString()
+      : event.timestamp
+    : new Date().toISOString();
+  const seq = event.seq || 0;
+
+  if (evType === "assistant") {
+    const content = data.message?.content || data.content || "";
+    const blocks = Array.isArray(content)
+      ? content
+      : typeof content === "string" && content
+        ? [{ type: "text", text: content }]
+        : [];
+    const out = [];
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+      const id = `ws-${seq}-${i}`;
+      if (block.type === "text" && block.text) {
+        // <...> is active silence — render as presence indicator, not text
+        if (block.text.trim() === "<...>") {
+          out.push({ id, role: "agent", type: "presence", timestamp: ts });
+          continue;
+        }
+        out.push({ id, role: "agent", type: "text", text: block.text, timestamp: ts, memories: 0 });
+      } else if (block.type === "tool_use") {
+        out.push({ id, role: "agent", type: "tool", name: block.name || "tool", status: "done", timestamp: ts });
+      } else if (block.type === "thinking") {
+        // Working indicator handled by isProcessing state — no message needed
+      }
+    }
+    return out;
+  }
+
+  if (evType === "user") {
+    // Skip tool results — only show real user messages
+    if (data.parent_tool_use_id) return [];
+    const content = data.message?.content || data.content || "";
+    const text = extractText(content);
+    if (!text) return [];
+    // Hook content (memento recall, stop hooks) — extract memory count, don't render as message
+    const firstLine = text.split("\n")[0] || "";
+    const isHook = firstLine.startsWith("Stop hook") || firstLine.startsWith("Memento") || text.length > 300;
+    if (isHook) {
+      // Count memory bullets (🔹) to get recall count
+      const bulletCount = (text.match(/🔹/g) || []).length;
+      if (bulletCount > 0) {
+        // Emit a hidden marker that the post-processing pass will attach to adjacent messages
+        return [{ id: `ws-${seq}`, role: "hook", type: "memory-count", memories: bulletCount, timestamp: ts, isStop: firstLine.startsWith("Stop hook") }];
+      }
+      return [];
+    }
+    return [{ id: `ws-${seq}`, role: "user", type: "text", text, timestamp: ts, memories: 0 }];
+  }
+
+  if (evType === "injected") {
+    const content = data.content || "";
+    const source = data.source || "";
+    // Only show dashboard-injected messages as user messages
+    if (source === "dashboard" && content) {
+      return [{ id: `ws-${seq}`, role: "user", type: "text", text: content, timestamp: ts, memories: 0 }];
+    }
+    return [];
+  }
+
+  if (evType === "hook") {
+    const memories = data.memories || 0;
+    if (memories > 0) {
+      return [{ id: `ws-${seq}`, role: "hook", type: "memory-count", memories, timestamp: ts, isStop: false }];
+    }
+    return [];
+  }
+
+  if (evType === "system") {
+    const subtype = data.subtype || "";
+    if (subtype === "compaction" || subtype === "compact_boundary") {
+      return [{ id: `ws-${seq}`, role: "system", type: "presence", timestamp: ts, label: "context compacted" }];
+    }
+    return [];
+  }
+
+  if (evType === "status") {
+    const sub = data.subtype || "";
+    if (sub === "compaction") {
+      return [{ id: `ws-${seq}`, role: "system", type: "presence", timestamp: ts, label: "context compacted" }];
+    }
+    return [];
+  }
+
+  if (evType === "result") {
+    const turns = data.num_turns || data.turns;
+    const duration = data.duration_ms;
+    const label = [
+      turns !== undefined ? `Turns: ${turns}` : null,
+      duration !== undefined ? `${(duration / 1000).toFixed(1)}s` : null,
+    ].filter(Boolean).join("  ");
+    if (label) {
+      return [{ id: `ws-${seq}`, role: "system", type: "meta", timestamp: ts, label }];
+    }
+    return [];
+  }
+
+  return [];
+}
+
+/** Post-process messages: attach memory counts from hook markers to adjacent messages, then remove markers. */
+function attachMemoryCounts(msgs) {
+  // Pass 1: attach counts
+  for (let i = 0; i < msgs.length; i++) {
+    if (msgs[i].type !== "memory-count") continue;
+    const { memories, isStop } = msgs[i];
+    if (isStop) {
+      // Stop hook recall → attach to the most recent agent message before this marker
+      for (let j = i - 1; j >= 0; j--) {
+        if (msgs[j].role === "agent" && (msgs[j].type === "text" || msgs[j].type === "presence")) {
+          msgs[j].memories = (msgs[j].memories || 0) + memories;
+          break;
+        }
+      }
+    } else {
+      // UserPromptSubmit hook recall → attach to the most recent user message before this marker
+      for (let j = i - 1; j >= 0; j--) {
+        if (msgs[j].role === "user" && msgs[j].type === "text") {
+          msgs[j].memories = (msgs[j].memories || 0) + memories;
+          break;
+        }
+      }
+    }
+  }
+  // Pass 2: remove markers
+  return msgs.filter((m) => m.type !== "memory-count");
+}
+
+export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, feedMode, onUnread }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const sheetRef = useRef(null);
   const wsRef = useRef(null);
+  const openRef = useRef(open);
+  openRef.current = open;
 
   const connectWs = useCallback(() => {
     const ws = getWorkspace();
@@ -237,23 +412,85 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
         const data = JSON.parse(e.data);
 
         if (data.type === "history" && Array.isArray(data.events)) {
-          const msgs = data.events.map(eventToMessage).filter(Boolean);
-          setMessages(msgs);
+          const msgs = attachMemoryCounts(data.events.flatMap(eventToMessages));
+          // Merge with any optimistic local messages not yet echoed
+          setMessages((prev) => {
+            const localPending = prev.filter((m) => m.id.startsWith("local-") && !msgs.some((wm) => wm.role === "user" && wm.text === m.text));
+            return [...msgs, ...localPending];
+          });
           return;
         }
 
         if (data.type === "event") {
-          const msg = eventToMessage(data);
-          if (msg) {
-            // Replace working indicator with actual message
-            if (msg.type !== "working") {
-              setMessages((prev) => prev.filter((m) => m.type !== "working").concat(msg));
-            } else {
-              setMessages((prev) => {
-                if (prev.some((m) => m.type === "working")) return prev;
-                return [...prev, msg];
-              });
-            }
+          if (data.event_type === "assistant") {
+            setIsProcessing(true);
+          }
+          if (data.event_type === "result") {
+            setIsProcessing(false);
+          }
+          // Normalize: real-time events have event_type at top level
+          const normalized = {
+            seq: data.seq,
+            type: data.event_type,
+            data: data.data,
+            timestamp: data.timestamp,
+          };
+          const newMsgs = eventToMessages(normalized);
+          // Track unread agent messages when chat is closed
+          if (!openRef.current && onUnread) {
+            const agentTexts = newMsgs.filter((m) => m.role === "agent" && m.type === "text");
+            if (agentTexts.length > 0) onUnread(agentTexts.length);
+          }
+          if (newMsgs.length > 0) {
+            setMessages((prev) => {
+              // Handle memory-count markers: attach to adjacent messages
+              const memoryMarkers = newMsgs.filter((m) => m.type === "memory-count");
+              const regularMsgs = newMsgs.filter((m) => m.type !== "memory-count");
+
+              let base = prev;
+              // Attach memory counts to existing messages
+              if (memoryMarkers.length > 0) {
+                base = [...prev];
+                for (const marker of memoryMarkers) {
+                  if (marker.isStop) {
+                    setIsProcessing(false);
+                    // Stop hook → attach to last agent message
+                    for (let j = base.length - 1; j >= 0; j--) {
+                      if (base[j].role === "agent" && (base[j].type === "text" || base[j].type === "presence")) {
+                        base[j] = { ...base[j], memories: (base[j].memories || 0) + marker.memories };
+                        break;
+                      }
+                    }
+                  } else {
+                    // UserPromptSubmit hook → attach to last user message
+                    for (let j = base.length - 1; j >= 0; j--) {
+                      if (base[j].role === "user" && base[j].type === "text") {
+                        base[j] = { ...base[j], memories: (base[j].memories || 0) + marker.memories };
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+
+              if (regularMsgs.length === 0) return base;
+
+              // Deduplicate: if a WS user message matches an optimistic local message, replace it
+              const fresh = [];
+              for (const msg of regularMsgs) {
+                if (msg.role === "user" && msg.type === "text") {
+                  const localIdx = base.findIndex((m) => m.id.startsWith("local-") && m.role === "user" && m.text === msg.text);
+                  if (localIdx !== -1) {
+                    base[localIdx] = { ...base[localIdx], id: msg.id };
+                    continue;
+                  }
+                }
+                if (!base.some((m) => m.id === msg.id)) {
+                  fresh.push(msg);
+                }
+              }
+              return [...base, ...fresh];
+            });
           }
           return;
         }
@@ -266,6 +503,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
 
     socket.onclose = () => {
       setWsConnected(false);
+      setIsProcessing(false);
       wsRef.current = null;
     };
 
@@ -297,7 +535,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isProcessing]);
 
   useEffect(() => {
     if (open && pendingVoice) {
@@ -331,6 +569,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
       memories: 0,
     };
     setMessages((prev) => [...prev, userMsg]);
+    setIsProcessing(true);
 
     try {
       await sendMessage(text);
@@ -384,6 +623,13 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
           {messages.map((msg) => (
             <ChatMessage key={msg.id} msg={msg} />
           ))}
+          {isProcessing && (
+            <div className="chat-working">
+              <span className="chat-working-dot" />
+              <span className="chat-working-dot" />
+              <span className="chat-working-dot" />
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
         <form className="chat-sheet-input" onSubmit={handleSend}>

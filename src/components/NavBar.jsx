@@ -4,7 +4,7 @@ import { isConnected } from "../lib/connection.js";
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen }) {
+export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unreadCount = 0 }) {
   const [listening, setListening] = useState(false);
   const holdTimer = useRef(null);
   const recognitionRef = useRef(null);
@@ -106,7 +106,7 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen }) {
         onPointerLeave={handlePointerCancel}
         aria-label="Talk to Fathom"
       >
-        <span className="nav-chat-badge">4</span>
+        {unreadCount > 0 && <span className="nav-chat-badge">{unreadCount}</span>}
         {listening ? (
           <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
             <path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3z" />
