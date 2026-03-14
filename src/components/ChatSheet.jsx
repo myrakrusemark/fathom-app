@@ -160,7 +160,18 @@ function ChatMessage({ msg }) {
   );
 }
 
-export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice }) {
+const FRESH_CHAT_MESSAGES = [
+  {
+    id: "fresh-1",
+    role: "agent",
+    type: "text",
+    text: "Everything you just saw in your feed? I set that up based on what you told me. But that's just the start.\n\nYou can ask me to create new workspaces for anything — a side project, a research topic, tracking something specific. I can add routines that run on schedules or conditions you define. And I manage all of it from here.\n\nThink of this chat as your control room. You talk to me, and I coordinate everything else.",
+    timestamp: new Date().toISOString(),
+    memories: 0,
+  },
+];
+
+export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, feedMode }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -170,11 +181,15 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice })
 
   useEffect(() => {
     if (open) {
-      getChat()
-        .then((data) => setMessages(data.messages))
-        .catch(console.error);
+      if (feedMode === "fresh") {
+        setMessages(FRESH_CHAT_MESSAGES);
+      } else {
+        getChat()
+          .then((data) => setMessages(data.messages))
+          .catch(console.error);
+      }
     }
-  }, [open]);
+  }, [open, feedMode]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

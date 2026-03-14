@@ -33,6 +33,7 @@ function RoutineRow({ routine, onFire }) {
 
   async function handleFire(e) {
     e.stopPropagation();
+    if (firing) return;
     setFiring(true);
     try {
       await onFire(routine.id);
@@ -55,7 +56,24 @@ function RoutineRow({ routine, onFire }) {
       onClick={() => setExpanded(!expanded)}
     >
       <div className="routine-row-main">
-        <span className="routine-dot" style={{ backgroundColor: color }} />
+        <button
+          className={`routine-play-btn ${firing ? "firing" : ""}`}
+          onClick={handleFire}
+          disabled={firing}
+          aria-label={`Fire ${routine.name}`}
+          style={{ color }}
+        >
+          {firing ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
+              <circle cx="12" cy="12" r="10" opacity="0.3" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
         <div className="routine-info">
           <span className="routine-name">{routine.name}</span>
           <span className="routine-workspace">{routine.workspace_name}</span>
@@ -74,13 +92,6 @@ function RoutineRow({ routine, onFire }) {
       {expanded && (
         <div className="routine-detail">
           <p className="routine-description">{routine.description}</p>
-          <button
-            className="fire-btn"
-            onClick={handleFire}
-            disabled={firing}
-          >
-            {firing ? "firing..." : "fire now"}
-          </button>
         </div>
       )}
     </div>
