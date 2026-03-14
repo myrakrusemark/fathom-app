@@ -13,13 +13,19 @@ function timeAgo(timestamp) {
 
 export default function FeedItem({ item, onOpenReceipt }) {
   const [expanded, setExpanded] = useState(false);
+  const [reaction, setReaction] = useState(null);
 
   function handleClick() {
-    if (item.receipt_id && onOpenReceipt) {
-      onOpenReceipt(item.receipt_id);
+    if (item.content_id && onOpenReceipt) {
+      onOpenReceipt(item.content_id);
     } else {
       setExpanded(!expanded);
     }
+  }
+
+  function handleReaction(type, e) {
+    e.stopPropagation();
+    setReaction((prev) => (prev === type ? null : type));
   }
 
   return (
@@ -42,28 +48,20 @@ export default function FeedItem({ item, onOpenReceipt }) {
           ))}
         </div>
       )}
-      {item.actions && item.actions.length > 0 && expanded && (
+      {expanded && (
         <div className="feed-item-actions">
-          {item.actions.includes("approve") && (
-            <button className="action-btn approve" onClick={(e) => e.stopPropagation()}>
-              <span role="img" aria-label="approve">&#x1F44D;</span>
-            </button>
-          )}
-          {item.actions.includes("reject") && (
-            <button className="action-btn reject" onClick={(e) => e.stopPropagation()}>
-              <span role="img" aria-label="reject">&#x1F44E;</span>
-            </button>
-          )}
-          {item.actions.includes("more") && (
-            <button className="action-btn more" onClick={(e) => e.stopPropagation()}>
-              more like this
-            </button>
-          )}
-          {item.actions.includes("expand") && (
-            <button className="action-btn" onClick={(e) => e.stopPropagation()}>
-              read full
-            </button>
-          )}
+          <button
+            className={`action-btn ${reaction === "up" ? "active" : ""}`}
+            onClick={(e) => handleReaction("up", e)}
+          >
+            <span role="img" aria-label="thumbs up">&#x1F44D;</span>
+          </button>
+          <button
+            className={`action-btn ${reaction === "down" ? "active" : ""}`}
+            onClick={(e) => handleReaction("down", e)}
+          >
+            <span role="img" aria-label="thumbs down">&#x1F44E;</span>
+          </button>
         </div>
       )}
     </article>
