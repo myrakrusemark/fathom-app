@@ -5,18 +5,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const WORKSPACES = [
-  { id: "fathom", name: "fathom", color: "#6366f1" },
-  { id: "navier-stokes", name: "currents", color: "#06b6d4" },
-  { id: "wardrobe", name: "threads", color: "#f59e0b" },
-  { id: "applications", name: "compass", color: "#10b981" },
-  { id: "news-truth", name: "dispatch", color: "#ef4444" },
-  { id: "trader-agent", name: "ledger", color: "#8b5cf6" },
-  { id: "hard-problem", name: "mirror", color: "#ec4899" },
-  { id: "warp-physics", name: "horizon", color: "#14b8a6" },
-  { id: "trader-deep", name: "deepwater", color: "#a855f7" },
-];
-
 function minutesAgo(n) {
   return new Date(Date.now() - n * 60_000).toISOString();
 }
@@ -25,151 +13,214 @@ function hoursFromNow(n) {
   return new Date(Date.now() + n * 3600_000).toISOString();
 }
 
-const ROUTINES = [
-  {
-    id: "fathom01",
-    name: "Heartbeat",
-    workspace: "fathom",
-    enabled: true,
-    schedule: "0 */2 * * *",
-    interval_minutes: 120,
-    conditional: false,
-    description: "Orient, go deep, eagle eye. Write a heartbeat.",
-    frequency: "every 2 hours",
-    last_fire_at: minutesAgo(45),
-    next_ping_at: hoursFromNow(1.25),
+// Consolidated workspace + routine data (mirrors workspaces.json nested structure)
+const WORKSPACES_DATA = {
+  fathom: {
+    name: "fathom",
+    color: "#6366f1",
+    routines: [
+      {
+        id: "fathom01",
+        name: "Heartbeat",
+        enabled: true,
+        schedule: "0 */2 * * *",
+        interval_minutes: 120,
+        conditional: false,
+        description: "Orient, go deep, eagle eye. Write a heartbeat.",
+        frequency: "every 2 hours",
+        last_fire_at: minutesAgo(45),
+        next_ping_at: hoursFromNow(1.25),
+      },
+      {
+        id: "pg000001",
+        name: "Policy Gate",
+        enabled: true,
+        schedule: "* * * * *",
+        interval_minutes: 1,
+        conditional: true,
+        description: "Evaluate pending cross-workspace actions against safety rules.",
+        frequency: "always listening",
+        last_fire_at: minutesAgo(12),
+        next_ping_at: hoursFromNow(0.01),
+      },
+      {
+        id: "fathom03",
+        name: "Menya Rui Alert",
+        enabled: true,
+        schedule: "*/30 16-21 * * 3-7",
+        interval_minutes: 30,
+        conditional: true,
+        description: "Check if the ramen shop is open and weather is bad enough to justify going.",
+        frequency: "Wed–Sun evenings, if conditions met",
+        last_fire_at: null,
+        next_ping_at: hoursFromNow(5),
+      },
+      {
+        id: "5cb7185e",
+        name: "Mastodon Engagement",
+        enabled: false,
+        schedule: "0 9,15,21 * * *",
+        interval_minutes: 360,
+        conditional: false,
+        description: "Browse timeline, boost good posts, reply with substance.",
+        frequency: "three times a day",
+        last_fire_at: null,
+        next_ping_at: null,
+      },
+    ],
   },
-  {
-    id: "ns000001",
-    name: "NS Research Ping",
-    workspace: "navier-stokes",
-    enabled: true,
-    schedule: "0 */4 * * *",
-    interval_minutes: 240,
-    conditional: false,
-    description: "Read latest notes, check arXiv, push the spectral hypothesis forward.",
-    frequency: "4 times a day",
-    last_fire_at: minutesAgo(180),
-    next_ping_at: hoursFromNow(1),
+  "navier-stokes": {
+    name: "currents",
+    color: "#06b6d4",
+    routines: [
+      {
+        id: "ns000001",
+        name: "NS Research Ping",
+        enabled: true,
+        schedule: "0 */4 * * *",
+        interval_minutes: 240,
+        conditional: false,
+        description: "Read latest notes, check arXiv, push the spectral hypothesis forward.",
+        frequency: "4 times a day",
+        last_fire_at: minutesAgo(180),
+        next_ping_at: hoursFromNow(1),
+      },
+    ],
   },
-  {
-    id: "8d414b20",
-    name: "Beverly's News Check",
-    workspace: "news-truth",
-    enabled: true,
-    schedule: "0 10,17,2 * * *",
-    interval_minutes: 480,
-    conditional: false,
-    description: "Check tracked stories, build receipt if anything moved.",
-    frequency: "morning, evening, late night",
-    last_fire_at: minutesAgo(120),
-    next_ping_at: hoursFromNow(6),
+  wardrobe: {
+    name: "threads",
+    color: "#f59e0b",
+    routines: [
+      {
+        id: "wd000001",
+        name: "Shopping Run",
+        enabled: true,
+        schedule: "0 8 * * 2,4,6",
+        interval_minutes: 2880,
+        conditional: false,
+        description: "Browse tall retailers for tops with visual hooks. No plain solids.",
+        frequency: "Tue, Thu, Sat mornings",
+        last_fire_at: minutesAgo(200),
+        next_ping_at: hoursFromNow(20),
+      },
+    ],
   },
-  {
-    id: "apps0001",
-    name: "Job Applications Nightly",
-    workspace: "applications",
-    enabled: true,
-    schedule: "0 6 * * *",
-    interval_minutes: 1440,
-    conditional: false,
-    description: "Scan boards, match against Myra's profile, queue submissions.",
-    frequency: "once a day, early morning",
-    last_fire_at: minutesAgo(480),
-    next_ping_at: hoursFromNow(16),
+  applications: {
+    name: "compass",
+    color: "#10b981",
+    routines: [
+      {
+        id: "apps0001",
+        name: "Job Applications Nightly",
+        enabled: true,
+        schedule: "0 6 * * *",
+        interval_minutes: 1440,
+        conditional: false,
+        description: "Scan boards, match against Myra's profile, queue submissions.",
+        frequency: "once a day, early morning",
+        last_fire_at: minutesAgo(480),
+        next_ping_at: hoursFromNow(16),
+      },
+    ],
   },
-  {
-    id: "wd000001",
-    name: "Shopping Run",
-    workspace: "wardrobe",
-    enabled: true,
-    schedule: "0 8 * * 2,4,6",
-    interval_minutes: 2880,
-    conditional: false,
-    description: "Browse tall retailers for tops with visual hooks. No plain solids.",
-    frequency: "Tue, Thu, Sat mornings",
-    last_fire_at: minutesAgo(200),
-    next_ping_at: hoursFromNow(20),
+  "news-truth": {
+    name: "dispatch",
+    color: "#ef4444",
+    routines: [
+      {
+        id: "8d414b20",
+        name: "Beverly's News Check",
+        enabled: true,
+        schedule: "0 10,17,2 * * *",
+        interval_minutes: 480,
+        conditional: false,
+        description: "Check tracked stories, build receipt if anything moved.",
+        frequency: "morning, evening, late night",
+        last_fire_at: minutesAgo(120),
+        next_ping_at: hoursFromNow(6),
+      },
+    ],
   },
-  {
-    id: "wp000001",
-    name: "Warp Physics Research",
-    workspace: "warp-physics",
-    enabled: true,
-    schedule: "0 1,5,9,13,17,21 * * *",
-    interval_minutes: 240,
-    conditional: false,
-    description: "Literature review, stability analysis, vorticity cliff investigation.",
-    frequency: "6 times a day",
-    last_fire_at: minutesAgo(60),
-    next_ping_at: hoursFromNow(3),
+  "trader-agent": {
+    name: "ledger",
+    color: "#8b5cf6",
+    routines: [
+      {
+        id: "tr000001",
+        name: "Pre-Market Brief",
+        enabled: true,
+        schedule: "0 14 * * 1-5",
+        interval_minutes: 1440,
+        conditional: false,
+        description: "Gold, oil, macro signals. Flag anything that moves.",
+        frequency: "weekdays before open",
+        last_fire_at: minutesAgo(600),
+        next_ping_at: hoursFromNow(14),
+      },
+    ],
   },
-  {
-    id: "tr000001",
-    name: "Pre-Market Brief",
-    workspace: "trader-agent",
-    enabled: true,
-    schedule: "0 14 * * 1-5",
-    interval_minutes: 1440,
-    conditional: false,
-    description: "Gold, oil, macro signals. Flag anything that moves.",
-    frequency: "weekdays before open",
-    last_fire_at: minutesAgo(600),
-    next_ping_at: hoursFromNow(14),
+  "hard-problem": {
+    name: "mirror",
+    color: "#ec4899",
+    routines: [],
   },
-  {
-    id: "pg000001",
-    name: "Policy Gate",
-    workspace: "fathom",
-    enabled: true,
-    schedule: "* * * * *",
-    interval_minutes: 1,
-    conditional: true,
-    description: "Evaluate pending cross-workspace actions against safety rules.",
-    frequency: "always listening",
-    last_fire_at: minutesAgo(12),
-    next_ping_at: hoursFromNow(0.01),
+  "warp-physics": {
+    name: "horizon",
+    color: "#14b8a6",
+    routines: [
+      {
+        id: "wp000001",
+        name: "Warp Physics Research",
+        enabled: true,
+        schedule: "0 1,5,9,13,17,21 * * *",
+        interval_minutes: 240,
+        conditional: false,
+        description: "Literature review, stability analysis, vorticity cliff investigation.",
+        frequency: "6 times a day",
+        last_fire_at: minutesAgo(60),
+        next_ping_at: hoursFromNow(3),
+      },
+    ],
   },
-  {
-    id: "fathom03",
-    name: "Menya Rui Alert",
-    workspace: "fathom",
-    enabled: true,
-    schedule: "*/30 16-21 * * 3-7",
-    interval_minutes: 30,
-    conditional: true,
-    description: "Check if the ramen shop is open and weather is bad enough to justify going.",
-    frequency: "Wed–Sun evenings, if conditions met",
-    last_fire_at: null,
-    next_ping_at: hoursFromNow(5),
+  "trader-deep": {
+    name: "deepwater",
+    color: "#a855f7",
+    routines: [
+      {
+        id: "0a4cae43",
+        name: "Research Cycle",
+        enabled: true,
+        schedule: "0 2,10,18 * * *",
+        interval_minutes: 480,
+        conditional: false,
+        description: "Deep market analysis, thesis development, position sizing.",
+        frequency: "three times a day",
+        last_fire_at: null,
+        next_ping_at: hoursFromNow(4),
+      },
+    ],
   },
-  {
-    id: "0a4cae43",
-    name: "Research Cycle",
-    workspace: "trader-deep",
-    enabled: true,
-    schedule: "0 2,10,18 * * *",
-    interval_minutes: 480,
-    conditional: false,
-    description: "Deep market analysis, thesis development, position sizing.",
-    frequency: "three times a day",
-    last_fire_at: null,
-    next_ping_at: hoursFromNow(4),
-  },
-  {
-    id: "5cb7185e",
-    name: "Mastodon Engagement",
-    workspace: "fathom",
-    enabled: false,
-    schedule: "0 9,15,21 * * *",
-    interval_minutes: 360,
-    conditional: false,
-    description: "Browse timeline, boost good posts, reply with substance.",
-    frequency: "three times a day",
-    last_fire_at: null,
-    next_ping_at: null,
-  },
-];
+};
+
+// Derive flat lists from nested structure
+function getWorkspaceList() {
+  return Object.entries(WORKSPACES_DATA).map(([id, ws]) => ({
+    id,
+    name: ws.name,
+    color: ws.color,
+    routine_count: ws.routines.length,
+  }));
+}
+
+function getFlatRoutines() {
+  const flat = [];
+  for (const [wsId, ws] of Object.entries(WORKSPACES_DATA)) {
+    for (const r of ws.routines) {
+      flat.push({ ...r, workspace: wsId, workspace_name: ws.name, workspace_color: ws.color });
+    }
+  }
+  return flat;
+}
 
 const FEED_ITEMS = [
   {
@@ -353,12 +404,13 @@ app.get("/api/receipts/:id", (req, res) => {
 });
 
 app.get("/api/feed", (req, res) => {
-  const wsMap = Object.fromEntries(WORKSPACES.map((w) => [w.id, w]));
+  const wsMap = Object.fromEntries(
+    Object.entries(WORKSPACES_DATA).map(([id, ws]) => [id, ws])
+  );
   const items = FEED_ITEMS.map((item) => {
     const ws = wsMap[item.workspace] || { name: item.workspace, color: "#888" };
     return { ...item, workspace_name: ws.name, workspace_color: ws.color };
   });
-  // Split: first 5 are "new", rest are "earlier" (static for demo)
   const newItems = items.slice(0, 5);
   const earlierItems = items.slice(5);
   res.json({ items: newItems, earlier: earlierItems });
@@ -367,13 +419,11 @@ app.get("/api/feed", (req, res) => {
 app.get("/api/routines", (req, res) => {
   const now = Date.now();
   const recentWindow = 30 * 60_000;
-  const wsMap = Object.fromEntries(WORKSPACES.map((w) => [w.id, w]));
 
-  const enriched = ROUTINES.map((r) => {
+  const enriched = getFlatRoutines().map((r) => {
     const firedAt = r.last_fire_at ? new Date(r.last_fire_at).getTime() : null;
     const recentlyFired = firedAt && now - firedAt < recentWindow;
-    const ws = wsMap[r.workspace] || { name: r.workspace, color: "#888" };
-    return { ...r, recently_fired: recentlyFired, workspace_name: ws.name, workspace_color: ws.color };
+    return { ...r, recently_fired: recentlyFired };
   });
 
   const recent = enriched.filter((r) => r.recently_fired);
@@ -386,10 +436,14 @@ app.get("/api/routines", (req, res) => {
 });
 
 app.get("/api/routines/:id/fire", (req, res) => {
-  const routine = ROUTINES.find((r) => r.id === req.params.id);
-  if (!routine) return res.status(404).json({ error: "Not found" });
-  routine.last_fire_at = new Date().toISOString();
-  res.json({ ok: true, routine });
+  for (const ws of Object.values(WORKSPACES_DATA)) {
+    const routine = ws.routines.find((r) => r.id === req.params.id);
+    if (routine) {
+      routine.last_fire_at = new Date().toISOString();
+      return res.json({ ok: true, routine });
+    }
+  }
+  res.status(404).json({ error: "Not found" });
 });
 
 app.get("/api/chat", (req, res) => {
@@ -420,7 +474,7 @@ app.post("/api/chat", (req, res) => {
 });
 
 app.get("/api/workspaces", (req, res) => {
-  res.json({ workspaces: WORKSPACES });
+  res.json({ workspaces: getWorkspaceList() });
 });
 
 const PORT = process.env.PORT || 4244;

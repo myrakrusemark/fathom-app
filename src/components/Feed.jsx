@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { getFeed, getWeather } from "../api/client.js";
-import { INTEREST_MAP } from "../data/interests.js";
+import { getInterestEntries } from "../data/workspaces.js";
 import FeedItem from "./FeedItem.jsx";
 
 function WeatherIcon({ icon }) {
@@ -137,9 +137,7 @@ export default function Feed({
   const [freshPhase, setFreshPhase] = useState("empty");
 
   // Build interest entries from selected interests
-  const selectedEntries = INTEREST_MAP.filter(
-    (entry) => selectedInterests && selectedInterests.has(entry.id)
-  );
+  const selectedEntries = getInterestEntries(selectedInterests);
 
   // Always fetch weather
   useEffect(() => {
