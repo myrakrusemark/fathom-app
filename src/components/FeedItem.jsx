@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import { getConnection } from "../lib/connection.js";
@@ -21,11 +22,18 @@ function authUrl(url) {
 }
 
 export default function FeedItem({ item, stackedItems, onOpenReceipt, onSelect }) {
+  const [expanded, setExpanded] = useState(false);
+
   // Stacked card — multiple same-workspace items in one cell
   if (stackedItems && stackedItems.length > 1) {
+    const MAX_VISIBLE = 4;
+    const visible = stackedItems.slice(0, MAX_VISIBLE);
+    const remaining = stackedItems.length - MAX_VISIBLE;
+    const shown = expanded ? stackedItems : visible;
+
     return (
       <article className="feed-item feed-item-stacked" tabIndex={0}>
-        {stackedItems.map((sub) => (
+        {shown.map((sub) => (
           <div
             key={sub.id}
             className="feed-stacked-row"
@@ -38,6 +46,28 @@ export default function FeedItem({ item, stackedItems, onOpenReceipt, onSelect }
             <span className="feed-stacked-time">{timeAgo(sub.timestamp)}</span>
           </div>
         ))}
+        {remaining > 0 && !expanded && (
+          <div
+            className="feed-stacked-row feed-stacked-more"
+            onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter") setExpanded(true); }}
+          >
+            <span className="feed-stacked-more-label">+ {remaining} more</span>
+          </div>
+        )}
+        {remaining > 0 && expanded && (
+          <div
+            className="feed-stacked-row feed-stacked-more"
+            onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter") setExpanded(false); }}
+          >
+            <span className="feed-stacked-more-label">show less</span>
+          </div>
+        )}
         <div className="feed-item-footer">
           <span className="feed-item-dot" style={{ backgroundColor: item.workspace_color }} />
           <span className="feed-item-workspace">{item.workspace_name}</span>

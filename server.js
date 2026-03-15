@@ -339,6 +339,61 @@ const FEED_ITEMS = [
     actions: ["expand"],
   },
   {
+    id: "f5c",
+    workspace: "news-truth",
+    type: "story",
+    layout: "standard",
+    timestamp: minutesAgo(75),
+    title: "Pakistan 4-day work week amid oil crisis",
+    body: `<p>Domestic pressure mounting from Iran-linked energy shock plus military overextension in Afghanistan.</p>`,
+    actions: ["expand"],
+  },
+  {
+    id: "f5d",
+    workspace: "news-truth",
+    type: "story",
+    layout: "standard",
+    timestamp: minutesAgo(80),
+    title: "FOMC meets against energy shock backdrop",
+    body: `<p>March CPI at 4.1%. Fed hold now certain. Oil trajectory toward $120+ if Hormuz stays closed.</p>`,
+    actions: ["expand"],
+  },
+  {
+    id: "f5e", workspace: "news-truth", type: "story", layout: "standard",
+    timestamp: minutesAgo(95), title: "66,000 Afghans displaced by Pakistan strikes",
+    body: `<p>110+ civilians killed, 123 injured. Children among victims. Kabul thwarted Bagram strike.</p>`, actions: [],
+  },
+  {
+    id: "f5f", workspace: "news-truth", type: "story", layout: "standard",
+    timestamp: minutesAgo(100), title: "Shell force majeure on Qatar LNG",
+    body: `<p>Biggest air transport disruption since Covid. Airlines hiking prices globally.</p>`, actions: [],
+  },
+  {
+    id: "f5g", workspace: "news-truth", type: "story", layout: "standard",
+    timestamp: minutesAgo(105), title: "Starlink countermeasures under discussion",
+    body: `<p>Iran considering jamming. Users already being arrested.</p>`, actions: [],
+  },
+  {
+    id: "f5h", workspace: "news-truth", type: "story", layout: "standard",
+    timestamp: minutesAgo(110), title: "Nancy Guthrie — FBI cameras captured nothing",
+    body: `<p>Suspect likely disabled cameras. Ransom demand received, physical evidence in lab.</p>`, actions: [],
+  },
+  {
+    id: "f5i", workspace: "news-truth", type: "story", layout: "standard",
+    timestamp: minutesAgo(115), title: "Lutnick agrees to testify before NM commission",
+    body: `<p>Gates and Black also asked for interviews. Tova Noel deposition March 26.</p>`, actions: [],
+  },
+  {
+    id: "f5j", workspace: "news-truth", type: "story", layout: "standard",
+    timestamp: minutesAgo(120), title: "BLS employment data has ±122k error margin",
+    body: `<p>Monthly changes are statistical noise. readthenotes1 on HN flagged methodology.</p>`, actions: [],
+  },
+  {
+    id: "f5k", workspace: "news-truth", type: "story", layout: "standard",
+    timestamp: minutesAgo(125), title: "STL County property tax reassessments going out",
+    body: `<p>Notices arriving this week across St. Louis County.</p>`, actions: [],
+  },
+  {
     id: "f6",
     workspace: "news-truth",
     type: "story",
@@ -491,14 +546,30 @@ app.get("/demo", (req, res) => {
   }
   const cards = entries.map((e) => {
     if (e.stacked) {
-      const rows = e.group.map(g => `
+      const MAX = 4;
+      const visible = e.group.slice(0, MAX);
+      const remaining = e.group.length - MAX;
+      const rows = visible.map(g => `
         <div class="feed-stacked-row" onclick="event.stopPropagation();openPanel(${g.idx})">
           <h3 class="feed-stacked-title">${g.item.title}</h3>
           <span class="feed-stacked-time">${timeAgo(g.item.timestamp)}</span>
         </div>`).join("");
+      const moreRow = remaining > 0 ? `
+        <div class="feed-stacked-row feed-stacked-more" onclick="event.stopPropagation();this.parentElement.querySelectorAll('.feed-stacked-hidden').forEach(el=>el.style.display='flex');this.style.display='none';this.parentElement.querySelector('.feed-stacked-less').style.display='flex'">
+          <span class="feed-stacked-more-label">+ ${remaining} more</span>
+        </div>` : "";
+      const hiddenRows = e.group.slice(MAX).map(g => `
+        <div class="feed-stacked-row feed-stacked-hidden" style="display:none" onclick="event.stopPropagation();openPanel(${g.idx})">
+          <h3 class="feed-stacked-title">${g.item.title}</h3>
+          <span class="feed-stacked-time">${timeAgo(g.item.timestamp)}</span>
+        </div>`).join("");
+      const lessRow = remaining > 0 ? `
+        <div class="feed-stacked-row feed-stacked-more feed-stacked-less" style="display:none" onclick="event.stopPropagation();this.parentElement.querySelectorAll('.feed-stacked-hidden').forEach(el=>el.style.display='none');this.style.display='none';this.parentElement.querySelector('.feed-stacked-more:not(.feed-stacked-less)').style.display='flex'">
+          <span class="feed-stacked-more-label">show less</span>
+        </div>` : "";
       const first = e.group[0].item;
       return `<article class="feed-item feed-item-stacked">
-        ${rows}
+        ${rows}${moreRow}${hiddenRows}${lessRow}
         <div class="feed-item-footer">
           <span class="feed-item-dot" style="background-color: ${first.workspace_color}"></span>
           <span class="feed-item-workspace">${first.workspace_name}</span>
