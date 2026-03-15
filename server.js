@@ -763,6 +763,7 @@ function dismissStackedRow(row) {
               '<span class="feed-item-time">' + lastItem.timestamp + '</span>' +
             '</div>';
           parent.replaceWith(newCard);
+          addSwipe(newCard);
         }
       } else if (countEl) {
         countEl.textContent = visibleRows.length + ' items';
@@ -789,7 +790,7 @@ function dismissFromPanel() {
 }
 
 // --- Swipe to dismiss ---
-document.querySelectorAll('.feed-item:not(.feed-item-stacked)').forEach(card => {
+function addSwipe(card) {
   var startX = 0, dx = 0;
   card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dx = 0; }, {passive: true});
   card.addEventListener('touchmove', e => {
@@ -800,7 +801,8 @@ document.querySelectorAll('.feed-item:not(.feed-item-stacked)').forEach(card => 
     if (dx > 100) dismissCard(card);
     else card.style.transform = '';
   });
-});
+}
+document.querySelectorAll('.feed-item:not(.feed-item-stacked)').forEach(addSwipe);
 </script>
 </body></html>`);
 });
