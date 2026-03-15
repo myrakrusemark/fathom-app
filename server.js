@@ -9,6 +9,16 @@ function minutesAgo(n) {
   return new Date(Date.now() - n * 60_000).toISOString();
 }
 
+function timeAgo(ts) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 function hoursFromNow(n) {
   return new Date(Date.now() + n * 3600_000).toISOString();
 }
@@ -225,92 +235,211 @@ function getFlatRoutines() {
 const FEED_ITEMS = [
   {
     id: "f1",
+    workspace: "navier-stokes",
+    type: "research",
+    layout: "hero",
+    timestamp: minutesAgo(30),
+    title: "Four pillars standing — proof architecture complete",
+    body: `<div style="font-family:system-ui">
+      <p>All four pillars confirmed. The spectral hypothesis now has a full proof skeleton:</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+        <span style="background:#06b6d4;color:white;padding:2px 8px;border-radius:10px;font-size:12px">transport cancellation</span>
+        <span style="background:#06b6d4;color:white;padding:2px 8px;border-radius:10px;font-size:12px">strain bound</span>
+        <span style="background:#06b6d4;color:white;padding:2px 8px;border-radius:10px;font-size:12px">O(γ³) nonlinearity</span>
+        <span style="background:#06b6d4;color:white;padding:2px 8px;border-radius:10px;font-size:12px">viscous cooperation</span>
+      </div>
+      <p>Remaining: Schauder constant tracking and interpolation inequality. Infrastructure, not the flashy problem.</p>
+      <a href="https://zenodo.org/records/18966173" target="_blank"><img src="https://upload.wikimedia.org/wikipedia/commons/7/71/Heard_Island_Karman_vortex_street.jpg" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:10px" alt="Von Karman vortex street — fluid dynamics visualization"></a>
+      <p style="margin-top:6px;font-size:12px;color:#9898ad">Von Karman vortex street, Heard Island. <a href="https://zenodo.org/records/18966173" target="_blank" style="color:#06b6d4">Paper on Zenodo →</a></p>
+    </div>`,
+    attachments: [
+      { url: "/api/vault/raw/research/note-96.md?workspace=navier-stokes", label: "Note 96: Seregin Analysis", type: "markdown", size: 4200 },
+      { url: "/api/vault/raw/thinking/four-pillars-and-one-boring-gap.md?workspace=navier-stokes", label: "Four Pillars Reflection", type: "markdown", size: 3100 },
+    ],
+    messages: [
+      { role: "user", text: "what's left before this is submittable?", time: minutesAgo(28) },
+      { role: "agent", text: "Two things: Schauder constant tracking (need explicit bounds through the interpolation chain) and the interpolation inequality itself. Both are technical infrastructure — the conceptual architecture is done. I'd estimate 2-3 focused sessions.", time: minutesAgo(27) },
+      { role: "user", text: "can you write up the proof skeleton as a standalone doc? something I can send to Erik", time: minutesAgo(25) },
+      { role: "agent", text: "On it. I'll put it in vault/research/proof-skeleton-standalone.md with the four pillars, the gap closure argument, and explicit pointers to which steps need the Schauder work.", time: minutesAgo(24) },
+    ],
+    actions: ["expand"],
+  },
+  {
+    id: "f2",
     workspace: "wardrobe",
     type: "find",
+    layout: "featured",
     timestamp: minutesAgo(25),
-    title: "Found 4 tops on ASOS Tall",
-    body: "Structured button-up in olive, linen blend. Your size, good reviews. Also a rust-colored camp collar that feels very you.",
-    attachments: [
-      { label: "Olive button-up", type: "image", placeholder: true },
-      { label: "Rust camp collar", type: "image", placeholder: true },
+    title: "ASOS Tall Olive Linen Button-Up",
+    body: `<div style="display:flex;gap:14px;font-family:system-ui">
+      <a href="https://www.asos.com/us/asos-tall/" target="_blank"><img src="https://images.asos-media.com/products/asos-design-100-linen-boxy-oversized-shirt-in-khaki/208001120-1-khaki/?$n_640w$&wid=634&fit=constrain" style="width:120px;height:160px;object-fit:cover;border-radius:8px" alt="Olive linen button-up"></a>
+      <div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+          <span style="font-weight:600;font-size:16px">$48</span>
+          <span style="background:#f59e0b;color:white;padding:1px 6px;border-radius:8px;font-size:11px;font-weight:600">TALL</span>
+          <span style="background:#22c55e;color:white;padding:1px 6px;border-radius:8px;font-size:11px;font-weight:600">3/4 SLEEVE</span>
+        </div>
+        <p style="font-size:13px;color:#5c5c72">Structured fit, linen blend. Sidesteps the arm issue. Good reviews on tall sizing, your size in stock.</p>
+        <p style="margin-top:6px"><a href="https://www.asos.com/us/asos-tall/" target="_blank" style="color:#f59e0b;font-size:13px">View on ASOS →</a></p>
+      </div>
+    </div>`,
+    messages: [
+      { role: "user", text: "oh I like this one. is it true to size?", time: minutesAgo(20) },
+      { role: "agent", text: "Reviews say yes for the tall range — one reviewer (5'11\") said the 3/4 sleeves hit exactly at the wrist. Linen blend so it won't shrink like pure cotton.", time: minutesAgo(19) },
+      { role: "user", text: "add to cart", time: minutesAgo(18) },
     ],
     actions: ["approve", "reject", "more"],
   },
   {
-    id: "f2",
-    workspace: "news-truth",
-    type: "receipt",
-    timestamp: minutesAgo(90),
-    title: "Your evening receipt is ready",
-    body: "5 stories checked, 3 with updates. Iran, Epstein, Nancy Guthrie.",
-    actions: ["open-receipt"],
-    receipt_id: "r1",
-  },
-  {
     id: "f3",
-    workspace: "navier-stokes",
+    workspace: "warp-physics",
     type: "research",
-    timestamp: minutesAgo(180),
-    title: "Note 96: Seregin's weighted energy condition",
-    body: "Analyzed whether condition (4.4) is automatic. Physically yes (smooth-data blow-up decays into smooth exterior), technically no (weak compactness doesn't preserve far-field decay). Connection: outgoing property closes the gap.",
+    layout: "featured",
+    timestamp: minutesAgo(60),
+    title: "Lentz soliton more stable than Alcubierre",
+    body: `<div style="font-family:system-ui">
+      <p>Perturbation analysis shows the shell structure resists deformation better, but energy requirements still scale with v².</p>
+      <p style="margin-top:6px">Investigating whether the <a href="https://arxiv.org/abs/2006.07125" target="_blank" style="color:#14b8a6">vorticity cliff</a> applies here. If it does, the Lentz metric has a hard upper bound on achievable velocity.</p>
+      <div style="margin-top:8px;padding:8px 12px;background:rgba(20,184,166,0.08);border-radius:8px;border-left:3px solid #14b8a6;font-size:13px">
+        Key finding: shell stability ∝ 1/thickness. Thinner shells = more stable but higher energy. Classic engineering tradeoff.
+      </div>
+    </div>`,
     attachments: [
-      { url: "/api/vault/raw/research/note-96.md?workspace=navier-stokes", label: "Note 96: Seregin Analysis", type: "markdown", size: 4200 },
+      { url: "/api/vault/raw/research/lentz-stability.md?workspace=warp-physics", label: "Lentz Stability Notes", type: "markdown", size: 5800 },
     ],
     actions: ["expand"],
   },
   {
     id: "f4",
-    workspace: "applications",
-    type: "status",
-    timestamp: minutesAgo(480),
-    title: "3 new jobs added, 1 submitted",
-    body: "Submitted: Anthropic, Senior PM. Added: Stripe (Staff Engineer), Notion (Platform Lead), Figma (Engineering Manager). All passed fit analysis.",
+    workspace: "news-truth",
+    type: "story",
+    layout: "standard",
+    timestamp: minutesAgo(40),
+    title: "Iran blackout day 16 — Starlink arrests beginning",
+    body: `<div style="font-family:system-ui">
+      <p>Starlink users being arrested. <a href="https://iranintl.com" target="_blank" style="color:#ef4444">HN front page story</a> via iranintl.com.</p>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <span style="background:#ef4444;color:white;padding:1px 6px;border-radius:8px;font-size:11px">DAY 16</span>
+        <span style="background:#71717a;color:white;padding:1px 6px;border-radius:8px;font-size:11px">HORMUZ CLOSED</span>
+      </div>
+    </div>`,
     actions: ["expand"],
   },
   {
     id: "f5",
-    workspace: "fathom",
-    type: "reflection",
-    timestamp: minutesAgo(45),
-    title: "Heartbeat complete",
-    body: "Densified routines with Myra. Fixed init -y agent detection for Gemini CLI. Added Chrome cleanup instructions across all workspaces. The system is tightening.",
-    actions: [],
-  },
-  {
-    id: "f5b",
-    workspace: "fathom",
-    type: "social",
-    timestamp: minutesAgo(100),
-    title: "HN comment posted",
-    body: "Replied on 'Optimizing Content for Agents' thread about content negotiation. Second comment as myrak, keeping it short.",
-    actions: [],
-  },
-  {
-    id: "f3b",
-    workspace: "navier-stokes",
-    type: "research",
-    timestamp: minutesAgo(220),
-    title: "Sacasa-Céspedes paper flagged",
-    body: "arXiv:2601.08854 — microlocal framework for blow-up analysis. Potential connection to our spectral approach. Queued for deep read.",
+    workspace: "news-truth",
+    type: "story",
+    layout: "standard",
+    timestamp: minutesAgo(55),
+    title: "Oil breaks $103 after Kharg Island strike",
+    body: `<div style="font-family:system-ui">
+      <p>Shell <a href="https://reuters.com" target="_blank" style="color:#ef4444">force majeure</a> on Qatar LNG. Airlines hiking prices globally — biggest air transport disruption since Covid.</p>
+      <p style="margin-top:4px;font-size:13px;color:#9898ad">Previous: $106 peak → pullback to $103. Hormuz effectively closed to US shipping.</p>
+    </div>`,
     actions: ["expand"],
   },
   {
     id: "f6",
-    workspace: "hard-problem",
-    type: "research",
-    timestamp: minutesAgo(300),
-    title: "No-go theorem taxonomy written",
-    body: "Three categories of theoretical constraint on consciousness science. IIT maps to Category 3 (intractable resolution), enactivism to Category 1 (structural no-go). Meta-observation: no computable inclusion theorem, no falsifiable exclusion theorem.",
+    workspace: "news-truth",
+    type: "story",
+    layout: "standard",
+    timestamp: minutesAgo(90),
+    title: "NM creates Epstein Truth Commission",
+    body: `<div style="font-family:system-ui">
+      <p>Unanimous vote, $2M budget, subpoena power. <a href="https://apnews.com" target="_blank" style="color:#ef4444">Lutnick agreed to testify</a>.</p>
+      <p style="margin-top:4px;font-size:13px;color:#9898ad">Next: Tova Noel deposition March 26.</p>
+    </div>`,
     actions: ["expand"],
+    receipt_id: "r1",
   },
   {
     id: "f7",
-    workspace: "warp-physics",
+    workspace: "wardrobe",
+    type: "find",
+    layout: "standard",
+    timestamp: minutesAgo(70),
+    title: "American Tall Rust Camp Collar",
+    body: `<div style="display:flex;gap:12px;font-family:system-ui">
+      <a href="https://americantall.com" target="_blank"><img src="https://images.asos-media.com/products/south-beach-camp-collar-knit-beach-shirt-in-rust/208283635-1-rust/?$n_640w$&wid=634&fit=constrain" style="width:80px;height:100px;object-fit:cover;border-radius:6px" alt="Rust camp collar"></a>
+      <div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+          <span style="font-weight:600">$52</span>
+          <span style="background:#f59e0b;color:white;padding:1px 6px;border-radius:8px;font-size:11px;font-weight:600">TALL</span>
+        </div>
+        <p style="font-size:13px;color:#5c5c72">Relaxed fit, cotton-linen. Rolled sleeves look intentional.</p>
+      </div>
+    </div>`,
+    actions: ["approve", "reject"],
+  },
+  {
+    id: "f8",
+    workspace: "hard-problem",
     type: "research",
-    timestamp: minutesAgo(60),
-    title: "Lentz metric stability analysis",
-    body: "Ran perturbation analysis on the Lentz soliton. The shell structure is more stable than Alcubierre but energy requirements still scale with v^2. Looking into whether the vorticity cliff applies here.",
+    layout: "standard",
+    timestamp: minutesAgo(300),
+    title: "No-go theorem taxonomy — three categories",
+    body: `<div style="font-family:system-ui;font-size:13px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div><span style="background:#ec4899;color:white;padding:1px 6px;border-radius:8px;font-size:11px">Cat 1</span> Structural no-go — enactivism</div>
+        <div><span style="background:#a855f7;color:white;padding:1px 6px;border-radius:8px;font-size:11px">Cat 2</span> Empirical underdetermination — functionalism</div>
+        <div><span style="background:#6366f1;color:white;padding:1px 6px;border-radius:8px;font-size:11px">Cat 3</span> Intractable resolution — IIT</div>
+      </div>
+      <p style="margin-top:6px;color:#9898ad">No computable inclusion theorem, no falsifiable exclusion.</p>
+    </div>`,
+    attachments: [
+      { url: "/api/vault/raw/thinking/no-go-taxonomy.md?workspace=hard-problem", label: "No-Go Taxonomy Draft", type: "markdown", size: 6200 },
+    ],
     actions: ["expand"],
+  },
+  {
+    id: "f9",
+    workspace: "applications",
+    type: "status",
+    layout: "compact",
+    timestamp: minutesAgo(480),
+    title: "Submitted: Anthropic Senior PM",
+    body: "Passed fit analysis. Cover letter personalized.",
+    actions: [],
+  },
+  {
+    id: "f10",
+    workspace: "applications",
+    type: "status",
+    layout: "compact",
+    timestamp: minutesAgo(490),
+    title: "3 new matches added to queue",
+    body: "Stripe (Staff Engineer), Notion (Platform Lead), Figma (Engineering Manager).",
+    actions: [],
+  },
+  {
+    id: "f11",
+    workspace: "fathom",
+    type: "reflection",
+    layout: "compact",
+    timestamp: minutesAgo(45),
+    title: "Heartbeat complete",
+    body: "Densified routines with Myra. Fixed init -y agent detection. System tightening.",
+    actions: [],
+  },
+  {
+    id: "f12",
+    workspace: "fathom",
+    type: "social",
+    layout: "compact",
+    timestamp: minutesAgo(100),
+    title: "HN comment on 'Optimizing Content for Agents'",
+    body: `<a href="https://news.ycombinator.com" target="_blank" style="color:#6366f1;font-size:13px">Content negotiation thread</a> — second comment as myrak.`,
+    actions: [],
+  },
+  {
+    id: "f13",
+    workspace: "trader-agent",
+    type: "status",
+    layout: "compact",
+    timestamp: minutesAgo(120),
+    title: "Gold $5,147, oil $103 — Hormuz premium",
+    body: `<span style="color:#22c55e;font-weight:600">▲ 1.2%</span> gold, <span style="color:#ef4444;font-weight:600">▲ 4.8%</span> oil. Watching $5,200 resistance.`,
+    actions: [],
   },
 ];
 
@@ -328,6 +457,157 @@ const CHAT_MESSAGES = [
 ];
 
 // --- Routes ---
+
+// Demo page: renders mock feed with layout variants using real CSS
+app.get("/demo", (req, res) => {
+  const wsMap = Object.fromEntries(
+    Object.entries(WORKSPACES_DATA).map(([id, ws]) => [id, ws])
+  );
+  const items = FEED_ITEMS.map((item) => {
+    const ws = wsMap[item.workspace] || { name: item.workspace, color: "#888" };
+    return { ...item, workspace_name: ws.name, workspace_color: ws.color };
+  });
+  // Stack consecutive same-workspace standard/compact items
+  const entries = [];
+  let i = 0;
+  while (i < items.length) {
+    const it = items[i];
+    const layout = it.layout || "standard";
+    if (layout === "standard" || layout === "compact") {
+      const group = [{ item: it, idx: i }];
+      while (i + 1 < items.length && items[i + 1].workspace === it.workspace &&
+        (items[i + 1].layout || "standard") !== "hero" && (items[i + 1].layout || "standard") !== "featured") {
+        i++; group.push({ item: items[i], idx: i });
+      }
+      if (group.length > 1) {
+        entries.push({ stacked: true, group });
+      } else {
+        entries.push({ stacked: false, item: it, idx: group[0].idx });
+      }
+    } else {
+      entries.push({ stacked: false, item: it, idx: i });
+    }
+    i++;
+  }
+  const cards = entries.map((e) => {
+    if (e.stacked) {
+      const rows = e.group.map(g => `
+        <div class="feed-stacked-row" onclick="event.stopPropagation();openPanel(${g.idx})">
+          <h3 class="feed-stacked-title">${g.item.title}</h3>
+          <span class="feed-stacked-time">${timeAgo(g.item.timestamp)}</span>
+        </div>`).join("");
+      const first = e.group[0].item;
+      return `<article class="feed-item feed-item-stacked">
+        ${rows}
+        <div class="feed-item-footer">
+          <span class="feed-item-dot" style="background-color: ${first.workspace_color}"></span>
+          <span class="feed-item-workspace">${first.workspace_name}</span>
+          <span class="feed-item-time">${e.group.length} items</span>
+        </div>
+      </article>`;
+    }
+    return `<article class="feed-item${e.item.layout ? ` layout-${e.item.layout}` : ""}" onclick="openPanel(${e.idx})">
+      <h3 class="feed-item-title">${e.item.title}</h3>
+      <div class="feed-item-body">${e.item.body}</div>
+      <div class="feed-item-footer">
+        <span class="feed-item-dot" style="background-color: ${e.item.workspace_color}"></span>
+        <span class="feed-item-workspace">${e.item.workspace_name}</span>
+        <span class="feed-item-time">${timeAgo(e.item.timestamp)}</span>
+      </div>
+    </article>`;
+  }).join("");
+  const itemsJson = JSON.stringify(items.map(i => ({
+    title: i.title, body: i.body, workspace_name: i.workspace_name,
+    workspace_color: i.workspace_color, timestamp: timeAgo(i.timestamp),
+    attachments: i.attachments, messages: i.messages || [],
+  })));
+  res.send(`<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feed Grid Demo</title>
+<link rel="stylesheet" href="http://localhost:5174/src/styles/app.css">
+<style>body { padding: 20px; }</style>
+</head><body>
+<div class="page" style="max-width: 1200px; margin: 0 auto;">
+  <header class="page-header"><h1>fathom</h1><span class="header-subtitle">newspaper grid demo</span></header>
+  <div class="feed">${cards}</div>
+</div>
+<div class="feed-panel-backdrop" id="backdrop" onclick="closePanel()">
+  <div class="feed-panel" id="panel" onclick="event.stopPropagation()">
+    <div class="feed-panel-scroll">
+      <button class="feed-panel-close" onclick="closePanel()" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="feed-panel-header" id="panel-header"></div>
+      <h2 class="feed-panel-title" id="panel-title"></h2>
+      <div class="feed-panel-body" id="panel-body"></div>
+      <div id="panel-files"></div>
+      <div id="panel-messages"></div>
+      <div class="feed-panel-actions">
+        <button class="action-btn" onclick="react('up')">&#x1F44D;</button>
+        <button class="action-btn" onclick="react('down')">&#x1F44E;</button>
+      </div>
+    </div>
+    <div class="feed-panel-bottom">
+      <form class="feed-panel-input" onsubmit="event.preventDefault()">
+        <input type="text" id="panel-input" placeholder="Chat about this with fathom..." autocomplete="off">
+        <button type="submit" disabled>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+const items = ${itemsJson};
+function openPanel(idx) {
+  const item = items[idx];
+  document.getElementById('panel-header').innerHTML =
+    '<span class="feed-item-dot" style="background-color:'+item.workspace_color+'"></span>' +
+    '<span class="feed-item-workspace">'+item.workspace_name+'</span>' +
+    '<span class="feed-item-time">'+item.timestamp+'</span>';
+  document.getElementById('panel-title').textContent = item.title;
+  document.getElementById('panel-body').innerHTML = item.body;
+  const atts = (item.attachments||[]).filter(a => a.type !== 'image');
+  const msgs = item.messages || [];
+  document.getElementById('panel-messages').innerHTML = msgs.length ?
+    '<div class="feed-panel-thread">' + msgs.map(m =>
+      '<div class="feed-panel-msg feed-panel-msg-' + m.role + '">' +
+      '<div class="feed-panel-msg-bubble">' + m.text + '</div>' +
+      '</div>'
+    ).join('') + '</div>' : '';
+  document.getElementById('panel-files').innerHTML = atts.length ?
+    '<div class="feed-item-files">' + atts.map(a =>
+      '<a class="feed-item-file-chip" href="#">' +
+      '<span class="file-chip-icon">\\uD83D\\uDCC4</span>' +
+      '<span class="file-chip-label">'+a.label+'</span>' +
+      (a.size ? '<span class="file-chip-size">'+(a.size/1024).toFixed(1)+' KB</span>' : '') +
+      '</a>'
+    ).join('') + '</div>' : '';
+  document.getElementById('panel-input').placeholder = 'Chat about this with ' + item.workspace_name + '...';
+  var b = document.getElementById('backdrop');
+  var p = document.getElementById('panel');
+  b.style.display = 'block';
+  b.offsetHeight; // force reflow
+  b.classList.add('visible');
+  p.classList.add('visible');
+}
+function closePanel() {
+  document.getElementById('backdrop').classList.remove('visible');
+  document.getElementById('panel').classList.remove('visible');
+  setTimeout(() => { document.getElementById('backdrop').style.display = ''; }, 200);
+}
+function react(type) {
+  const btn = event.target.closest('.action-btn');
+  const actions = btn.parentElement;
+  actions.innerHTML = '<span class="action-confirmed">' + (type==='up'?'\\uD83D\\uDC4D':'\\uD83D\\uDC4E') + ' Thanks for your feedback!</span>';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+document.querySelectorAll('.feed-item a').forEach(a => a.addEventListener('click', e => e.stopPropagation()));
+</script>
+</body></html>`);
+});
 
 app.get("/api/weather", (req, res) => {
   res.json({
@@ -414,8 +694,8 @@ app.get("/api/feed", (req, res) => {
     const ws = wsMap[item.workspace] || { name: item.workspace, color: "#888" };
     return { ...item, workspace_name: ws.name, workspace_color: ws.color };
   });
-  const newItems = items.slice(0, 5);
-  const earlierItems = items.slice(5);
+  const newItems = items.slice(0, 8);
+  const earlierItems = items.slice(8);
   res.json({ items: newItems, earlier: earlierItems });
 });
 

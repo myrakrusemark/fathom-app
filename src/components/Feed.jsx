@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getFeed, getWeather } from "../api/client.js";
 import { getInterestEntries } from "../data/workspaces.js";
 import FeedItem from "./FeedItem.jsx";
+import FeedDetailPanel from "./FeedDetailPanel.jsx";
 
 function WeatherIcon({ icon }) {
   if (icon === "cloud-sun") {
@@ -18,6 +19,37 @@ function WeatherIcon({ icon }) {
       <path d="M19 16.9A5 5 0 0018 7h-1.26a8 8 0 10-11.62 9" />
     </svg>
   );
+}
+
+function stackByWorkspace(items) {
+  const result = [];
+  let i = 0;
+  while (i < items.length) {
+    const item = items[i];
+    const layout = item.layout || "standard";
+    // Only stack standard/compact items from the same workspace
+    if (layout === "standard" || layout === "compact") {
+      const group = [item];
+      while (
+        i + 1 < items.length &&
+        items[i + 1].workspace === item.workspace &&
+        (items[i + 1].layout || "standard") !== "hero" &&
+        (items[i + 1].layout || "standard") !== "featured"
+      ) {
+        i++;
+        group.push(items[i]);
+      }
+      if (group.length > 1) {
+        result.push({ stacked: true, items: group });
+      } else {
+        result.push({ stacked: false, item: group[0] });
+      }
+    } else {
+      result.push({ stacked: false, item });
+    }
+    i++;
+  }
+  return result;
 }
 
 function groupByWorkspace(items) {
@@ -133,6 +165,7 @@ export default function Feed({
   const [earlierOpen, setEarlierOpen] = useState(false);
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(feedMode !== "fresh");
+  const [selectedItem, setSelectedItem] = useState(null);
 
   // Fresh mode animation phases: empty → welcome → setup → messages
   const [freshPhase, setFreshPhase] = useState("empty");
@@ -289,8 +322,18 @@ export default function Feed({
           )}
 
           <div className="feed">
-            {renderGroups(groupByWorkspace(newItems), onOpenReceipt)}
+            {stackByWorkspace(newItems).map((entry) =>
+              entry.stacked ? (
+                <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} onOpenReceipt={onOpenReceipt} onSelect={setSelectedItem} />
+              ) : (
+                <FeedItem key={entry.item.id} item={entry.item} onOpenReceipt={onOpenReceipt} onSelect={setSelectedItem} />
+              )
+            )}
           </div>
+
+          {selectedItem && (
+            <FeedDetailPanel item={selectedItem} onClose={() => setSelectedItem(null)} />
+          )}
 
           {earlierItems.length > 0 && (
             <div className="feed-earlier">
