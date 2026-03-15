@@ -47,6 +47,14 @@ export function sendMessage(text) {
   });
 }
 
+export function sendVoice(text, duration = 0) {
+  const ws = getWorkspace();
+  return request("/api/voice/send", {
+    method: "POST",
+    body: JSON.stringify({ text, workspace: ws, duration }),
+  });
+}
+
 export function getConversation() {
   const ws = getWorkspace();
   return request(`/api/conversation/${ws}`);
@@ -62,6 +70,17 @@ export function getWeather() {
 
 export function getReceipt(id) {
   return request(`/api/receipts/${id}`);
+}
+
+export function sendReaction(workspace, reaction, item) {
+  const emoji = reaction === "up" ? "\u{1F44D}" : "\u{1F44E}";
+  const verb = reaction === "up" ? "liked" : "disliked";
+  const message = `${emoji} Human ${verb} your notification:\n\n**${item.title}**\n${item.body}`;
+  const room = `dm:${["myra", workspace].sort().join("+")}`;
+  return request(`/api/room/${encodeURIComponent(room)}`, {
+    method: "POST",
+    body: JSON.stringify({ message, sender: "myra" }),
+  });
 }
 
 export async function testConnection(serverUrl, apiKey) {

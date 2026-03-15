@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { NavLink } from "react-router-dom";
 import { isConnected } from "../lib/connection.js";
+import { sendVoice } from "../api/client.js";
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -10,6 +11,7 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unre
   const recognitionRef = useRef(null);
   const isHolding = useRef(false);
   const didLongPress = useRef(false);
+  const listenStart = useRef(null);
 
   const startListening = useCallback(() => {
     if (!SpeechRecognition) {
@@ -18,6 +20,7 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unre
     }
 
     setListening(true);
+    listenStart.current = Date.now();
     const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
     recognition.interimResults = false;
@@ -26,8 +29,11 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unre
 
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
+      const duration = Math.round((Date.now() - (listenStart.current || Date.now())) / 1000);
       setListening(false);
       if (transcript.trim()) {
+        // Send as voice message to the server, then open chat
+        sendVoice(transcript.trim(), duration).catch(() => {});
         onVoiceResult(transcript.trim());
       }
     };

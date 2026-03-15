@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getWsUrl, getWorkspace, sendMessage } from "../api/client.js";
+import { getConnection } from "../lib/connection.js";
 import ThoughtBubble from "./ThoughtBubble.jsx";
 
 function timeAgo(timestamp) {
@@ -73,18 +74,51 @@ function inlineMarkdown(text) {
 const VOICE_BAR_HEIGHTS = [12, 8, 18, 6, 15, 10, 19, 7, 14, 11, 17, 9];
 
 function VoiceMessage({ msg }) {
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef(null);
+
+  function handlePlay() {
+    if (!msg.audio_url) return;
+    if (playing) {
+      audioRef.current?.pause();
+      setPlaying(false);
+      return;
+    }
+    const conn = getConnection();
+    const baseUrl = conn?.serverUrl || "";
+    const audio = new Audio(`${baseUrl}${msg.audio_url}`);
+    audioRef.current = audio;
+    audio.onended = () => setPlaying(false);
+    audio.onerror = () => setPlaying(false);
+    audio.play();
+    setPlaying(true);
+  }
+
   return (
-    <div className="chat-voice">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-        <path d="M19 10v2a7 7 0 01-14 0v-2" />
-        <path d="M12 19v4M8 23h8" />
-      </svg>
+    <div
+      className={`chat-voice ${msg.audio_url ? "playable" : ""} ${playing ? "playing" : ""}`}
+      onClick={handlePlay}
+    >
+      {msg.audio_url ? (
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+          {playing ? (
+            <><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></>
+          ) : (
+            <path d="M8 5v14l11-7z" />
+          )}
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+          <path d="M19 10v2a7 7 0 01-14 0v-2" />
+          <path d="M12 19v4M8 23h8" />
+        </svg>
+      )}
       <div className="chat-voice-wave">
         {VOICE_BAR_HEIGHTS.map((h, i) => (
           <div
             key={i}
-            className="chat-voice-bar"
+            className={`chat-voice-bar ${playing ? "animating" : ""}`}
             style={{ height: `${h}px` }}
           />
         ))}
@@ -237,7 +271,7 @@ function extractText(content) {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
     return content
-      .filter((b) => b.type === "text")
+      .filter((b) => b.type === "text" || (!b.type && b.text))
       .map((b) => b.text || "")
       .join("");
   }
@@ -269,15 +303,21 @@ function eventToMessages(event) {
     for (let i = 0; i < blocks.length; i++) {
       const block = blocks[i];
       const id = `ws-${seq}-${i}`;
-      if (block.type === "text" && block.text) {
+      if ((block.type === "text" || (!block.type && block.text)) && block.text) {
         // <...> is active silence — render as presence indicator, not text
         if (block.text.trim() === "<...>") {
           out.push({ id, role: "agent", type: "presence", timestamp: ts });
           continue;
         }
         out.push({ id, role: "agent", type: "text", text: block.text, timestamp: ts, memories: 0 });
-      } else if (block.type === "tool_use") {
-        out.push({ id, role: "agent", type: "tool", name: block.name || "tool", status: "done", timestamp: ts });
+      } else if (block.type === "tool_use" || (!block.type && block.name)) {
+        const toolName = block.name || "tool";
+        // Voice send — render as playable voice message using input text
+        if (toolName.includes("send_voice") && block.input?.text) {
+          out.push({ id, role: "agent", type: "voice", text: block.input.text, duration: 0, audio_url: null, timestamp: ts, memories: 0, _toolId: block.id });
+        } else {
+          out.push({ id, role: "agent", type: "tool", name: toolName, status: "done", timestamp: ts });
+        }
       } else if (block.type === "thinking") {
         // Working indicator handled by isProcessing state — no message needed
       }
@@ -289,6 +329,8 @@ function eventToMessages(event) {
     // Skip tool results — only show real user messages
     if (data.parent_tool_use_id) return [];
     const content = data.message?.content || data.content || "";
+    // Content arrays with tool_use_id are tool results, not user messages
+    if (Array.isArray(content) && content[0]?.tool_use_id) return [];
     const text = extractText(content);
     if (!text) return [];
     // Hook content (memento recall, stop hooks) — extract memory count, don't render as message
@@ -308,12 +350,60 @@ function eventToMessages(event) {
 
   if (evType === "injected") {
     const content = data.content || "";
+    if (!content) return [];
+
+    // Voice messages from app
+    const voiceMatch = content.match(/^\[voice message from .*?\]: (.+?)(?:\n\(This was a voice message\.)/s);
+    if (voiceMatch) {
+      return [{ id: `ws-${seq}`, role: "user", type: "voice", text: voiceMatch[1], duration: 0, audio_url: null, timestamp: ts, memories: 0 }];
+    }
+
+    // Memory recall hooks — extract count and attach to adjacent messages
+    if (content.startsWith("Stop hook feedback:") || content.startsWith("Memento")) {
+      const bulletCount = (content.match(/🔹/g) || []).length;
+      if (bulletCount > 0) {
+        return [{ id: `ws-${seq}`, role: "hook", type: "memory-count", memories: bulletCount, timestamp: ts, isStop: content.startsWith("Stop hook") }];
+      }
+      return [];
+    }
+
+    // DM from another workspace
+    const dmMatch = content.match(/^Message from workspace \((.+?)\): (.+)/s);
+    if (dmMatch) {
+      return [{ id: `ws-${seq}`, role: "user", type: "text", text: `${dmMatch[1]}: ${dmMatch[2]}`, timestamp: ts, memories: 0 }];
+    }
+
+    // DM delivery notifications
+    if (content.startsWith("DM from ")) {
+      const dmText = content.split("\n")[0].replace(/^DM from \S+: /, "");
+      return [{ id: `ws-${seq}`, role: "user", type: "text", text: dmText, timestamp: ts, memories: 0 }];
+    }
+
+    // Session continuation prompts — skip
+    if (content === "Continue from where you left off.") return [];
+
+    // Dashboard messages and general user input
     const source = data.source || "";
-    // Only show dashboard-injected messages as user messages
-    if (source === "dashboard" && content) {
+    if (source === "dashboard" || source === "voice" || source === "history") {
+      // Filter out long hook content that slipped through
+      if (content.length > 300) return [];
       return [{ id: `ws-${seq}`, role: "user", type: "text", text: content, timestamp: ts, memories: 0 }];
     }
+
     return [];
+  }
+
+  if (evType === "voice") {
+    return [{
+      id: `ws-${seq}`,
+      role: data.role || "user",
+      type: "voice",
+      text: data.text || "",
+      duration: data.duration || 0,
+      audio_url: data.audio_url || null,
+      timestamp: ts,
+      memories: 0,
+    }];
   }
 
   if (evType === "hook") {
@@ -354,6 +444,41 @@ function eventToMessages(event) {
   }
 
   return [];
+}
+
+/** Enrich agent voice messages with audio_url from tool results. */
+function enrichVoiceMessages(msgs, rawEvents) {
+  // Build a map of tool_use_id → audio_url from tool results
+  const audioMap = {};
+  for (const ev of rawEvents) {
+    if (ev.type !== "user") continue;
+    const content = ev.data?.message?.content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      if (!block.tool_use_id) continue;
+      // Tool result content can be a string or array of blocks
+      const resultText = Array.isArray(block.content)
+        ? block.content.find(b => b.type === "text")?.text
+        : typeof block.content === "string" ? block.content : null;
+      if (!resultText) continue;
+      try {
+        const parsed = JSON.parse(resultText);
+        if (parsed.audio_url) {
+          audioMap[block.tool_use_id] = { audio_url: parsed.audio_url, duration: parsed.duration || 0 };
+        }
+      } catch { /* not JSON */ }
+    }
+  }
+
+  // Enrich voice messages that have _toolId
+  for (const msg of msgs) {
+    if (msg.type === "voice" && msg._toolId && audioMap[msg._toolId]) {
+      msg.audio_url = audioMap[msg._toolId].audio_url;
+      msg.duration = audioMap[msg._toolId].duration;
+      delete msg._toolId;
+    }
+  }
+  return msgs;
 }
 
 /** Post-process messages: attach memory counts from hook markers to adjacent messages, then remove markers. */
@@ -412,7 +537,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
         const data = JSON.parse(e.data);
 
         if (data.type === "history" && Array.isArray(data.events)) {
-          const msgs = attachMemoryCounts(data.events.flatMap(eventToMessages));
+          const msgs = attachMemoryCounts(enrichVoiceMessages(data.events.flatMap(eventToMessages), data.events));
           // Merge with any optimistic local messages not yet echoed
           setMessages((prev) => {
             const localPending = prev.filter((m) => m.id.startsWith("local-") && !msgs.some((wm) => wm.role === "user" && wm.text === m.text));
@@ -539,13 +664,10 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
 
   useEffect(() => {
     if (open && pendingVoice) {
-      const voice = consumeVoice();
-      if (voice) {
-        setInput(voice);
-        const t = setTimeout(() => inputRef.current?.focus(), 350);
-        return () => clearTimeout(t);
-      }
-    } else if (open) {
+      // Voice was already sent via sendVoice API — just consume and clear
+      consumeVoice();
+    }
+    if (open) {
       const t = setTimeout(() => inputRef.current?.focus(), 350);
       return () => clearTimeout(t);
     }
