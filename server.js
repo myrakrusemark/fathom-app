@@ -586,6 +586,7 @@ app.get("/demo", (req, res) => {
       <div class="feed-item-footer">
         <span class="feed-item-dot" style="background-color: ${e.item.workspace_color}"></span>
         <span class="feed-item-workspace">${e.item.workspace_name}</span>
+        ${(e.item.attachments || []).length > 0 ? `<span class="feed-item-attachments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>${(e.item.attachments || []).length}</span>` : ""}
         <span class="feed-item-time">${timeAgo(e.item.timestamp)}</span>
       </div>
     </article>`;
@@ -664,9 +665,9 @@ function openPanel(idx) {
   document.getElementById('panel-files').innerHTML = atts.length ?
     '<div class="feed-item-files">' + atts.map(a =>
       '<a class="feed-item-file-chip" href="#">' +
-      '<span class="file-chip-icon">\\uD83D\\uDCC4</span>' +
       '<span class="file-chip-label">'+a.label+'</span>' +
       (a.size ? '<span class="file-chip-size">'+(a.size/1024).toFixed(1)+' KB</span>' : '') +
+      '<span class="file-chip-download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span>' +
       '</a>'
     ).join('') + '</div>' : '';
   document.getElementById('panel-input').placeholder = 'Chat about this with ' + item.workspace_name + '...';

@@ -24,17 +24,6 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function typeIcon(type) {
-  switch (type) {
-    case "markdown": return "\uD83D\uDCC4";
-    case "pdf": return "\uD83D\uDCCA";
-    case "audio": return "\uD83C\uDFB5";
-    case "video": return "\uD83C\uDFAC";
-    case "data": return "\uD83D\uDDC2\uFE0F";
-    case "text": return "\uD83D\uDCC4";
-    default: return "\uD83D\uDCC1";
-  }
-}
 
 function authUrl(url) {
   const conn = getConnection();
@@ -179,11 +168,15 @@ export default function FeedDetailPanel({ item, onClose }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <span className="file-chip-icon">{typeIcon(att.type)}</span>
                   <span className="file-chip-label">{att.label}</span>
                   {att.size != null && (
                     <span className="file-chip-size">{formatSize(att.size)}</span>
                   )}
+                  <span className="file-chip-download">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                    </svg>
+                  </span>
                 </a>
               ))}
             </div>
