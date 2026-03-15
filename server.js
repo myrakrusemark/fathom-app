@@ -803,6 +803,21 @@ function addSwipe(card) {
   });
 }
 document.querySelectorAll('.feed-item:not(.feed-item-stacked)').forEach(addSwipe);
+
+// Swipe on stacked rows
+function addRowSwipe(row) {
+  var startX = 0, dx = 0;
+  row.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dx = 0; }, {passive: true});
+  row.addEventListener('touchmove', e => {
+    dx = e.touches[0].clientX - startX;
+    if (dx > 0) row.style.transform = 'translateX(' + dx + 'px)';
+  }, {passive: true});
+  row.addEventListener('touchend', () => {
+    if (dx > 80) dismissStackedRow(row);
+    else row.style.transform = '';
+  });
+}
+document.querySelectorAll('.feed-stacked-row[data-idx]').forEach(addRowSwipe);
 </script>
 </body></html>`);
 });
