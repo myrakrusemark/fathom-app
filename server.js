@@ -550,18 +550,20 @@ app.get("/demo", (req, res) => {
       const visible = e.group.slice(0, MAX);
       const remaining = e.group.length - MAX;
       const rows = visible.map(g => `
-        <div class="feed-stacked-row" onclick="event.stopPropagation();openPanel(${g.idx})">
+        <div class="feed-stacked-row" onclick="event.stopPropagation();openPanel(${g.idx})" data-idx="${g.idx}">
           <h3 class="feed-stacked-title">${g.item.title}</h3>
           <span class="feed-stacked-time">${timeAgo(g.item.timestamp)}</span>
+          <button class="feed-stacked-dismiss" onclick="event.stopPropagation();dismissStackedRow(this.parentElement)">&times;</button>
         </div>`).join("");
       const moreRow = remaining > 0 ? `
         <div class="feed-stacked-row feed-stacked-more" onclick="event.stopPropagation();this.parentElement.querySelectorAll('.feed-stacked-hidden').forEach(el=>el.style.display='flex');this.style.display='none';this.parentElement.querySelector('.feed-stacked-less').style.display='flex'">
           <span class="feed-stacked-more-label">+ ${remaining} more</span>
         </div>` : "";
       const hiddenRows = e.group.slice(MAX).map(g => `
-        <div class="feed-stacked-row feed-stacked-hidden" style="display:none" onclick="event.stopPropagation();openPanel(${g.idx})">
+        <div class="feed-stacked-row feed-stacked-hidden" style="display:none" onclick="event.stopPropagation();openPanel(${g.idx})" data-idx="${g.idx}">
           <h3 class="feed-stacked-title">${g.item.title}</h3>
           <span class="feed-stacked-time">${timeAgo(g.item.timestamp)}</span>
+          <button class="feed-stacked-dismiss" onclick="event.stopPropagation();dismissStackedRow(this.parentElement)">&times;</button>
         </div>`).join("");
       const lessRow = remaining > 0 ? `
         <div class="feed-stacked-row feed-stacked-more feed-stacked-less" style="display:none" onclick="event.stopPropagation();this.parentElement.querySelectorAll('.feed-stacked-hidden').forEach(el=>el.style.display='none');this.style.display='none';this.parentElement.querySelector('.feed-stacked-more:not(.feed-stacked-less)').style.display='flex'">
@@ -577,7 +579,8 @@ app.get("/demo", (req, res) => {
         </div>
       </article>`;
     }
-    return `<article class="feed-item${e.item.layout ? ` layout-${e.item.layout}` : ""}" onclick="openPanel(${e.idx})">
+    return `<article class="feed-item${e.item.layout ? ` layout-${e.item.layout}` : ""}" onclick="openPanel(${e.idx})" data-idx="${e.idx}">
+      <button class="feed-item-dismiss" onclick="event.stopPropagation();dismissCard(this.parentElement)" aria-label="Dismiss">&times;</button>
       <h3 class="feed-item-title">${e.item.title}</h3>
       <div class="feed-item-body">${e.item.body}</div>
       <div class="feed-item-footer">
@@ -602,7 +605,15 @@ app.get("/demo", (req, res) => {
 </head><body>
 <div class="page" style="max-width: 1200px; margin: 0 auto;">
   <header class="page-header"><h1>fathom</h1><span class="header-subtitle">newspaper grid demo</span></header>
-  <div class="feed">${cards}</div>
+  <div class="feed" id="main-feed">${cards}</div>
+  <div class="feed-earlier" id="earlier-section" style="display:none">
+    <button class="feed-earlier-toggle" onclick="document.getElementById('earlier-list').style.display=document.getElementById('earlier-list').style.display==='none'?'block':'none';this.querySelector('.feed-earlier-chevron').classList.toggle('open')">
+      <span class="feed-earlier-label">Earlier · <span id="earlier-count">0</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" class="feed-earlier-chevron"><path d="M6 9l6 6 6-6"/></svg>
+      </span>
+    </button>
+    <div id="earlier-list" style="display:none"></div>
+  </div>
 </div>
 <div class="feed-panel-backdrop" id="backdrop" onclick="closePanel()">
   <div class="feed-panel" id="panel" onclick="event.stopPropagation()">
@@ -618,6 +629,7 @@ app.get("/demo", (req, res) => {
       <div class="feed-panel-actions">
         <button class="action-btn" onclick="react('up')">&#x1F44D;</button>
         <button class="action-btn" onclick="react('down')">&#x1F44E;</button>
+        <button class="action-btn feed-panel-dismiss-btn" onclick="dismissFromPanel()" title="Mark as read">&#x2715;</button>
       </div>
     </div>
     <div class="feed-panel-bottom">
@@ -633,6 +645,7 @@ app.get("/demo", (req, res) => {
 <script>
 const items = ${itemsJson};
 function openPanel(idx) {
+  currentPanelIdx = idx;
   const item = items[idx];
   document.getElementById('panel-header').innerHTML =
     '<span class="feed-item-dot" style="background-color:'+item.workspace_color+'"></span>' +
@@ -676,6 +689,94 @@ function react(type) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
 document.querySelectorAll('.feed-item a').forEach(a => a.addEventListener('click', e => e.stopPropagation()));
+
+// --- Dismiss ---
+function dismissCard(el) {
+  el.style.transition = 'opacity 0.2s, transform 0.2s';
+  el.style.opacity = '0';
+  el.style.transform = 'translateX(60px)';
+  setTimeout(() => {
+    el.style.display = 'none';
+    // Add to earlier
+    var clone = el.cloneNode(true);
+    clone.style = '';
+    clone.className = 'feed-item';
+    clone.removeAttribute('onclick');
+    var dismiss = clone.querySelector('.feed-item-dismiss');
+    if (dismiss) dismiss.remove();
+    var idx = el.getAttribute('data-idx');
+    if (idx) clone.setAttribute('onclick', 'openPanel(' + idx + ')');
+    document.getElementById('earlier-list').appendChild(clone);
+    var section = document.getElementById('earlier-section');
+    section.style.display = 'block';
+    var count = document.getElementById('earlier-list').children.length;
+    document.getElementById('earlier-count').textContent = count;
+  }, 200);
+}
+
+// --- Dismiss stacked row ---
+function dismissStackedRow(row) {
+  var idx = row.getAttribute('data-idx');
+  row.style.transition = 'opacity 0.15s, max-height 0.15s';
+  row.style.opacity = '0';
+  row.style.maxHeight = '0';
+  row.style.overflow = 'hidden';
+  row.style.padding = '0 16px';
+  setTimeout(() => {
+    row.remove();
+    // Add to earlier as simple item
+    if (idx) {
+      var item = items[parseInt(idx)];
+      if (item) {
+        var el = document.createElement('div');
+        el.className = 'feed-item';
+        el.onclick = function() { openPanel(parseInt(idx)); };
+        el.innerHTML = '<h3 class="feed-item-title">' + item.title + '</h3><div class="feed-item-footer"><span class="feed-item-dot" style="background-color:' + item.workspace_color + '"></span><span class="feed-item-workspace">' + item.workspace_name + '</span></div>';
+        document.getElementById('earlier-list').appendChild(el);
+        document.getElementById('earlier-section').style.display = 'block';
+        document.getElementById('earlier-count').textContent = document.getElementById('earlier-list').children.length;
+      }
+    }
+    // Update stacked card count
+    var parent = document.querySelector('.feed-item-stacked');
+    if (parent) {
+      var rows = parent.querySelectorAll('.feed-stacked-row:not(.feed-stacked-more):not(.feed-stacked-less)');
+      var countEl = parent.querySelector('.feed-item-time');
+      if (countEl) countEl.textContent = rows.length + ' items';
+    }
+  }, 150);
+}
+
+// --- Dismiss from panel ---
+var currentPanelIdx = null;
+var _origOpenPanel = typeof openPanel !== 'undefined' ? openPanel : null;
+function dismissFromPanel() {
+  if (currentPanelIdx === null) return;
+  closePanel();
+  // Find and dismiss the card by data-idx
+  var card = document.querySelector('[data-idx="' + currentPanelIdx + '"]');
+  if (card) {
+    if (card.classList.contains('feed-stacked-row')) {
+      dismissStackedRow(card);
+    } else {
+      dismissCard(card);
+    }
+  }
+}
+
+// --- Swipe to dismiss ---
+document.querySelectorAll('.feed-item:not(.feed-item-stacked)').forEach(card => {
+  var startX = 0, dx = 0;
+  card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dx = 0; }, {passive: true});
+  card.addEventListener('touchmove', e => {
+    dx = e.touches[0].clientX - startX;
+    if (dx > 0) { card.style.transform = 'translateX(' + dx + 'px)'; card.style.opacity = Math.max(0, 1 - dx/200); }
+  }, {passive: true});
+  card.addEventListener('touchend', () => {
+    if (dx > 100) { dismissCard(card); }
+    else { card.style.transform = ''; card.style.opacity = ''; }
+  });
+});
 </script>
 </body></html>`);
 });
