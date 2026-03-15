@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
+import { feedSanitizeSchema } from "../lib/sanitize.js";
 import { getConnection } from "../lib/connection.js";
 
 function timeAgo(timestamp) {
@@ -21,7 +23,7 @@ function authUrl(url) {
   return conn.serverUrl + url + sep + "token=" + conn.apiKey;
 }
 
-export default function FeedItem({ item, stackedItems, onOpenReceipt, onSelect }) {
+export default function FeedItem({ item, stackedItems, onOpenReceipt, onSelect, onDismiss }) {
   const [expanded, setExpanded] = useState(false);
 
   // Stacked card — multiple same-workspace items in one cell
@@ -96,9 +98,20 @@ export default function FeedItem({ item, stackedItems, onOpenReceipt, onSelect }
       tabIndex={0}
       role="button"
     >
+      {onDismiss && (
+        <button
+          className="feed-item-dismiss"
+          onClick={(e) => { e.stopPropagation(); onDismiss(item.id); }}
+          aria-label="Dismiss"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      )}
       <h3 className="feed-item-title">{item.title}</h3>
       <div className="feed-item-body" onClick={(e) => { if (e.target.tagName === "A") e.stopPropagation(); }}>
-        <Markdown rehypePlugins={[rehypeRaw]}>{item.body}</Markdown>
+        <Markdown rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
       </div>
       {firstImage && (
         <div className="feed-item-images">

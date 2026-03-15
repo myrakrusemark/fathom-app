@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState, useEffect } from "react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
+import { feedSanitizeSchema } from "../lib/sanitize.js";
 import PhotoSwipeLightbox from "photoswipe/lightbox";
 import "photoswipe/style.css";
-import { sendReaction, sendMessage } from "../api/client.js";
+import { sendReaction, postToRoom, readRoom } from "../api/client.js";
 import { getConnection } from "../lib/connection.js";
 
 function timeAgo(timestamp) {
@@ -32,7 +34,7 @@ function authUrl(url) {
   return conn.serverUrl + url + sep + "token=" + conn.apiKey;
 }
 
-export default function FeedDetailPanel({ item, onClose }) {
+export default function FeedDetailPanel({ item, onClose, onDismiss }) {
   const [visible, setVisible] = useState(false);
   const storageKey = `reaction:${item.id}`;
   const stored = localStorage.getItem(storageKey);
@@ -40,12 +42,36 @@ export default function FeedDetailPanel({ item, onClose }) {
   const [sent, setSent] = useState(!!stored);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
   const inputRef = useRef(null);
+  const pollRef = useRef(null);
+
+  const roomName = `notif-${item.workspace}-${item.id}`;
 
   // Animate in
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
   }, []);
+
+  // Poll room for replies while panel is open
+  useEffect(() => {
+    function poll() {
+      readRoom(roomName, 1440)
+        .then((data) => {
+          const msgs = (data.messages || []).map((m) => ({
+            id: m.id,
+            sender: m.sender,
+            text: m.message,
+            timestamp: m.timestamp,
+          }));
+          setChatMessages(msgs);
+        })
+        .catch(() => {});
+    }
+    poll();
+    pollRef.current = setInterval(poll, 5000);
+    return () => clearInterval(pollRef.current);
+  }, [roomName]);
 
   function handleClose() {
     setVisible(false);
@@ -56,9 +82,15 @@ export default function FeedDetailPanel({ item, onClose }) {
     e.preventDefault();
     if (!message.trim() || sending) return;
     setSending(true);
-    const contextMessage = `[Re: ${item.title}] ${message}`;
-    sendMessage(contextMessage)
-      .then(() => { setMessage(""); })
+    const text = `@${item.workspace} ${message}`;
+    postToRoom(roomName, text)
+      .then(() => {
+        setMessage("");
+        setChatMessages((prev) => [
+          ...prev,
+          { id: `local-${Date.now()}`, sender: "myra", text, timestamp: new Date().toISOString() },
+        ]);
+      })
       .catch(console.error)
       .finally(() => setSending(false));
   }
@@ -116,11 +148,20 @@ export default function FeedDetailPanel({ item, onClose }) {
     <div className={`feed-panel-backdrop ${visible ? "visible" : ""}`} onClick={handleClose}>
       <div className={`feed-panel ${visible ? "visible" : ""}`} onClick={(e) => e.stopPropagation()}>
         <div className="feed-panel-scroll">
-          <button className="feed-panel-close" onClick={handleClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="feed-panel-top-actions">
+            {onDismiss && (
+              <button className="feed-panel-dismiss" onClick={() => { onDismiss(); handleClose(); }} aria-label="Dismiss">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            <button className="feed-panel-close" onClick={handleClose} aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
           <div className="feed-panel-header">
             <span className="feed-item-dot" style={{ backgroundColor: item.workspace_color }} />
@@ -131,7 +172,7 @@ export default function FeedDetailPanel({ item, onClose }) {
           <h2 className="feed-panel-title">{item.title}</h2>
 
           <div className="feed-panel-body">
-            <Markdown rehypePlugins={[rehypeRaw]}>{item.body}</Markdown>
+            <Markdown rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
           </div>
 
           {images.length > 0 && (
@@ -205,6 +246,19 @@ export default function FeedDetailPanel({ item, onClose }) {
               </>
             )}
           </div>
+
+          {chatMessages.length > 0 && (
+            <div className="feed-panel-chat">
+              <div className="feed-panel-chat-label">Thread</div>
+              {chatMessages.map((msg) => (
+                <div key={msg.id} className={`feed-panel-chat-msg ${msg.sender === "myra" ? "mine" : ""}`}>
+                  <span className="feed-panel-chat-sender">{msg.sender}</span>
+                  <span className="feed-panel-chat-text">{msg.text}</span>
+                  <span className="feed-panel-chat-time">{timeAgo(msg.timestamp)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="feed-panel-bottom">

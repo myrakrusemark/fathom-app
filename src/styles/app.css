@@ -2946,3 +2946,86 @@ body {
     max-width: 1200px;
   }
 }
+
+/* --- Feed panel top actions --- */
+.feed-panel-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+}
+
+.feed-panel-dismiss {
+  background: none;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.feed-panel-dismiss:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text);
+}
+
+/* --- Feed panel chat thread --- */
+.feed-panel-chat {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.feed-panel-chat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.feed-panel-chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.feed-panel-chat-msg.mine {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.feed-panel-chat-sender {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.feed-panel-chat-text {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.feed-panel-chat-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  align-self: flex-end;
+}
+
+/* --- Earlier items muted --- */
+.feed-earlier-items .feed-item {
+  opacity: 0.65;
+}

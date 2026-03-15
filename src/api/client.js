@@ -89,6 +89,17 @@ export function getReceipt(id) {
   return request(`/api/receipts/${id}`);
 }
 
+export function postToRoom(roomName, message, sender = "myra") {
+  return request(`/api/room/${encodeURIComponent(roomName)}`, {
+    method: "POST",
+    body: JSON.stringify({ message, sender }),
+  });
+}
+
+export function readRoom(roomName, minutes = 60) {
+  return request(`/api/room/${encodeURIComponent(roomName)}?minutes=${minutes}`);
+}
+
 export function sendReaction(workspace, reaction, item) {
   const emoji = reaction === "up" ? "\u{1F44D}" : "\u{1F44E}";
   const verb = reaction === "up" ? "liked" : "disliked";

@@ -1,8 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { getFeed, getWeather } from "../api/client.js";
 import { getInterestEntries } from "../data/workspaces.js";
 import FeedItem from "./FeedItem.jsx";
 import FeedDetailPanel from "./FeedDetailPanel.jsx";
+
+const DISMISS_KEY = "fathom:dismissed";
+
+function getDismissed() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(DISMISS_KEY) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDismissed(set) {
+  localStorage.setItem(DISMISS_KEY, JSON.stringify([...set]));
+}
 
 function WeatherIcon({ icon }) {
   if (icon === "cloud-sun") {
@@ -50,33 +64,6 @@ function stackByWorkspace(items) {
     i++;
   }
   return result;
-}
-
-function groupByWorkspace(items) {
-  const groups = new Map();
-  const order = [];
-  for (const item of items) {
-    if (!groups.has(item.workspace)) {
-      groups.set(item.workspace, []);
-      order.push(item.workspace);
-    }
-    groups.get(item.workspace).push(item);
-  }
-  return order.map((ws) => groups.get(ws));
-}
-
-function renderGroups(groups, onOpenReceipt) {
-  return groups.map((group) =>
-    group.length > 1 ? (
-      <div className="feed-cluster" key={group[0].workspace}>
-        {group.map((item) => (
-          <FeedItem key={item.id} item={item} onOpenReceipt={onOpenReceipt} />
-        ))}
-      </div>
-    ) : (
-      <FeedItem key={group[0].id} item={group[0]} onOpenReceipt={onOpenReceipt} />
-    )
-  );
 }
 
 // --- Fresh feed sub-components ---
@@ -160,12 +147,42 @@ export default function Feed({
   unreadCount = 0,
 }) {
   // Lived mode state
-  const [newItems, setNewItems] = useState([]);
-  const [earlierItems, setEarlierItems] = useState([]);
+  const [allItems, setAllItems] = useState([]);
+  const [dismissed, setDismissed] = useState(getDismissed);
   const [earlierOpen, setEarlierOpen] = useState(false);
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(feedMode !== "fresh");
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItemId, setSelectedItemId] = useState(null);
+
+  const handleDismiss = useCallback((itemId) => {
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(itemId);
+      saveDismissed(next);
+      return next;
+    });
+    if (selectedItemId === itemId) setSelectedItemId(null);
+  }, [selectedItemId]);
+
+  // Split items into new (undismissed) and earlier (dismissed)
+  const { newItems, earlierItems } = useMemo(() => {
+    const n = [];
+    const e = [];
+    for (const item of allItems) {
+      if (dismissed.has(item.id)) {
+        e.push(item);
+      } else {
+        n.push(item);
+      }
+    }
+    return { newItems: n, earlierItems: e };
+  }, [allItems, dismissed]);
+
+  // Resolve selected item from ID
+  const selectedItem = useMemo(
+    () => allItems.find((i) => i.id === selectedItemId) || null,
+    [allItems, selectedItemId]
+  );
 
   // Fresh mode animation phases: empty → welcome → setup → messages
   const [freshPhase, setFreshPhase] = useState("empty");
@@ -178,21 +195,24 @@ export default function Feed({
     getWeather().then(setWeather).catch(() => {});
   }, []);
 
-  // Fetch feed data when in lived mode
+  // Fetch feed data when in lived mode, poll every 30s
   useEffect(() => {
     if (feedMode === "fresh") return;
     let cancelled = false;
+    function fetchFeed() {
+      getFeed()
+        .then((data) => {
+          if (!cancelled) {
+            setAllItems(data.items || []);
+          }
+        })
+        .catch(console.error)
+        .finally(() => { if (!cancelled) setLoading(false); });
+    }
     setLoading(true);
-    getFeed()
-      .then((data) => {
-        if (!cancelled) {
-          setNewItems(data.items);
-          setEarlierItems(data.earlier || []);
-        }
-      })
-      .catch(console.error)
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    fetchFeed();
+    const interval = setInterval(fetchFeed, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [feedMode]);
 
   // Fresh mode: how many welcome messages have been revealed
@@ -324,15 +344,19 @@ export default function Feed({
           <div className="feed">
             {stackByWorkspace(newItems).map((entry) =>
               entry.stacked ? (
-                <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} onOpenReceipt={onOpenReceipt} onSelect={setSelectedItem} />
+                <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} onOpenReceipt={onOpenReceipt} onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />
               ) : (
-                <FeedItem key={entry.item.id} item={entry.item} onOpenReceipt={onOpenReceipt} onSelect={setSelectedItem} />
+                <FeedItem key={entry.item.id} item={entry.item} onOpenReceipt={onOpenReceipt} onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />
               )
             )}
           </div>
 
           {selectedItem && (
-            <FeedDetailPanel item={selectedItem} onClose={() => setSelectedItem(null)} />
+            <FeedDetailPanel
+              item={selectedItem}
+              onClose={() => setSelectedItemId(null)}
+              onDismiss={() => handleDismiss(selectedItem.id)}
+            />
           )}
 
           {earlierItems.length > 0 && (
@@ -358,7 +382,9 @@ export default function Feed({
               </button>
               {earlierOpen && (
                 <div className="feed feed-earlier-items">
-                  {renderGroups(groupByWorkspace(earlierItems), onOpenReceipt)}
+                  {earlierItems.map((item) => (
+                    <FeedItem key={item.id} item={item} onOpenReceipt={onOpenReceipt} onSelect={(i) => setSelectedItemId(i.id)} />
+                  ))}
                 </div>
               )}
             </div>
