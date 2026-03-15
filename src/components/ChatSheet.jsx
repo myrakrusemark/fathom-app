@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { getWsUrl, getWorkspace, sendMessage } from "../api/client.js";
+import { getWsUrl, getWorkspace, sendMessage, uploadAttachment } from "../api/client.js";
 import { getConnection } from "../lib/connection.js";
 import ThoughtBubble from "./ThoughtBubble.jsx";
 
@@ -69,6 +69,31 @@ function inlineMarkdown(text) {
     tokens.push(text.slice(lastIndex));
   }
   return tokens;
+}
+
+function formatSize(bytes) {
+  if (bytes == null) return null;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function typeIcon(type) {
+  switch (type) {
+    case "image": return "\uD83D\uDDBC\uFE0F";
+    case "audio": return "\uD83C\uDFB5";
+    case "video": return "\uD83C\uDFAC";
+    case "document": return "\uD83D\uDCC4";
+    case "data": return "\uD83D\uDCCA";
+    default: return "\uD83D\uDCC1";
+  }
+}
+
+function authUrl(url) {
+  const conn = getConnection();
+  if (!conn) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return conn.serverUrl + url + sep + "token=" + conn.apiKey;
 }
 
 const VOICE_BAR_HEIGHTS = [12, 8, 18, 6, 15, 10, 19, 7, 14, 11, 17, 9];
@@ -160,7 +185,7 @@ function toolDisplay(name) {
 function ToolIndicator({ msg }) {
   const { label, icon } = toolDisplay(msg.name);
   return (
-    <div className="chat-tool-use">
+    <span className="chat-tool-use">
       {icon === "memory" ? (
         <ThoughtBubble size={20} color="var(--accent)" />
       ) : (
@@ -176,6 +201,16 @@ function ToolIndicator({ msg }) {
           <span className="chat-working-dot" />
         </span>
       )}
+    </span>
+  );
+}
+
+function ToolGroup({ tools }) {
+  return (
+    <div className="chat-tool-group">
+      {tools.map((msg) => (
+        <ToolIndicator key={msg.id} msg={msg} />
+      ))}
     </div>
   );
 }
@@ -236,6 +271,39 @@ function ChatMessage({ msg }) {
                 </svg>
                 <span>{msg.image_alt || "Image"}</span>
               </div>
+            </div>
+          )}
+          {msg.attachments?.length > 0 && (
+            <div className="chat-bubble-attachments">
+              {msg.attachments.filter(a => a.type === "image").map((att, i) => (
+                <img
+                  key={i}
+                  className="chat-bubble-att-image"
+                  src={att._local ? att.url : authUrl(att.url)}
+                  alt={att.label}
+                  loading="lazy"
+                  onClick={() => window.open(att._local ? att.url : authUrl(att.url), "_blank")}
+                />
+              ))}
+              {msg.attachments.filter(a => a.type === "audio").map((att, i) => (
+                <div key={i} className="chat-bubble-att-audio">
+                  <span className="chat-bubble-att-label">{att.label}</span>
+                  <audio controls preload="none" src={att._local ? att.url : authUrl(att.url)} />
+                </div>
+              ))}
+              {msg.attachments.filter(a => a.type !== "image" && a.type !== "audio").map((att, i) => (
+                <a
+                  key={i}
+                  className="chat-bubble-att-file"
+                  href={att._local ? att.url : authUrl(att.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span>{typeIcon(att.type)}</span>
+                  <span className="chat-bubble-att-name">{att.label}</span>
+                  {att.size != null && <span className="chat-bubble-att-size">{formatSize(att.size)}</span>}
+                </a>
+              ))}
             </div>
           )}
         </>
@@ -356,6 +424,21 @@ function eventToMessages(event) {
     const voiceMatch = content.match(/^\[voice message from .*?\]: (.+?)(?:\n\(This was a voice message\.)/s);
     if (voiceMatch) {
       return [{ id: `ws-${seq}`, role: "user", type: "voice", text: voiceMatch[1], duration: 0, audio_url: null, timestamp: ts, memories: 0 }];
+    }
+
+    // Dashboard messages with attachments
+    if (data.attachments?.length > 0) {
+      // Strip the [attachment: ...] prefix from display text
+      const displayText = content.replace(/^\[attachment:.*?\]\n?/g, "").trim();
+      return [{
+        id: `ws-${seq}`,
+        role: "user",
+        type: "text",
+        text: displayText || null,
+        attachments: data.attachments,
+        timestamp: ts,
+        memories: 0,
+      }];
     }
 
     // Memory recall hooks — extract count and attach to adjacent messages
@@ -515,12 +598,28 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
   const [sending, setSending] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingPreview, setPendingPreview] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const sheetRef = useRef(null);
   const wsRef = useRef(null);
   const openRef = useRef(open);
   openRef.current = open;
+
+  useEffect(() => {
+    if (!pendingFile) {
+      setPendingPreview(null);
+      return;
+    }
+    if (pendingFile.type.startsWith("image/")) {
+      const url = URL.createObjectURL(pendingFile);
+      setPendingPreview(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setPendingPreview(null);
+  }, [pendingFile]);
 
   const connectWs = useCallback(() => {
     const ws = getWorkspace();
@@ -676,9 +775,11 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
   async function handleSend(e) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || sending) return;
+    const file = pendingFile;
+    if ((!text && !file) || sending) return;
 
     setInput("");
+    setPendingFile(null);
     setSending(true);
 
     // Optimistically add user message
@@ -686,16 +787,30 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
       id: `local-${++msgCounter}`,
       role: "user",
       type: "text",
-      text,
+      text: text || null,
       timestamp: new Date().toISOString(),
       memories: 0,
     };
+    if (file) {
+      userMsg.attachments = [{
+        url: pendingPreview || null,
+        label: file.name,
+        type: file.type.startsWith("image/") ? "image"
+          : file.type.startsWith("audio/") ? "audio"
+          : "document",
+        size: file.size,
+        _local: true,
+      }];
+    }
     setMessages((prev) => [...prev, userMsg]);
     setIsProcessing(true);
 
     try {
-      await sendMessage(text);
-      // Response will come through WebSocket
+      if (file) {
+        await uploadAttachment(file, text);
+      } else {
+        await sendMessage(text);
+      }
     } catch (err) {
       const errMsg = {
         id: `err-${++msgCounter}`,
@@ -742,9 +857,24 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
           </button>
         </div>
         <div className="chat-sheet-messages">
-          {messages.map((msg) => (
-            <ChatMessage key={msg.id} msg={msg} />
-          ))}
+          {(() => {
+            const grouped = [];
+            let i = 0;
+            while (i < messages.length) {
+              if (messages[i].type === "tool") {
+                const tools = [];
+                while (i < messages.length && messages[i].type === "tool") {
+                  tools.push(messages[i]);
+                  i++;
+                }
+                grouped.push(<ToolGroup key={tools[0].id} tools={tools} />);
+              } else {
+                grouped.push(<ChatMessage key={messages[i].id} msg={messages[i]} />);
+                i++;
+              }
+            }
+            return grouped;
+          })()}
           {isProcessing && (
             <div className="chat-working">
               <span className="chat-working-dot" />
@@ -756,19 +886,61 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
         </div>
         <form className="chat-sheet-input" onSubmit={handleSend}>
           <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="say something..."
-            disabled={sending}
-            autoComplete="off"
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.csv,.json,.md"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) setPendingFile(f);
+              e.target.value = "";
+            }}
           />
-          <button type="submit" disabled={!input.trim() || sending}>
-            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          </button>
+          {pendingFile && (
+            <div className="chat-preview-strip">
+              {pendingPreview ? (
+                <img className="chat-preview-thumb" src={pendingPreview} alt="" />
+              ) : (
+                <div className="chat-preview-file">
+                  <span>{pendingFile.name}</span>
+                  <span className="chat-preview-size">{formatSize(pendingFile.size)}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                className="chat-preview-dismiss"
+                onClick={() => setPendingFile(null)}
+              >
+                &times;
+              </button>
+            </div>
+          )}
+          <div className="chat-input-row">
+            <button
+              type="button"
+              className="chat-attach-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="say something..."
+              disabled={sending}
+              autoComplete="off"
+            />
+            <button type="submit" disabled={(!input.trim() && !pendingFile) || sending}>
+              <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          </div>
         </form>
       </div>
     </div>

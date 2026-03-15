@@ -602,10 +602,28 @@ app.get("/demo", (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Feed Grid Demo</title>
 <link rel="stylesheet" href="http://localhost:5174/src/styles/app.css">
-<style>body { padding: 20px; }</style>
+<style>
+body { padding: 20px; transition: background 0.8s ease; }
+.atmosphere-bar {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
+  position: sticky; top: 0; z-index: 50; padding: 8px 0;
+}
+.atmosphere-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 20px; background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  font-size: 12px; cursor: pointer; transition: all 0.2s;
+  color: inherit;
+}
+.atmosphere-btn:hover { background: rgba(255,255,255,0.55); }
+.atmosphere-btn.active { background: rgba(255,255,255,0.7); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.atmosphere-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+</style>
 </head><body>
 <div class="page" style="max-width: 1200px; margin: 0 auto;">
   <header class="page-header"><h1>fathom</h1><span class="header-subtitle">updates</span></header>
+  <div class="atmosphere-bar" id="atmosphere-bar"></div>
   <div class="feed" id="main-feed">${cards}</div>
   <div class="feed-earlier" id="earlier-section" style="display:none">
     <button class="feed-earlier-toggle" onclick="document.getElementById('earlier-list').style.display=document.getElementById('earlier-list').style.display==='none'?'block':'none';this.querySelector('.feed-earlier-chevron').classList.toggle('open')">
@@ -804,6 +822,33 @@ function addSwipe(card) {
   });
 }
 document.querySelectorAll('.feed-item:not(.feed-item-stacked)').forEach(addSwipe);
+
+// --- Atmosphere backgrounds ---
+var atmospheres = [
+  { label: 'Default', dot: '#a8c4e0', bg: 'radial-gradient(ellipse at 30% 10%, rgba(180,210,240,0.4) 0%, transparent 50%), radial-gradient(ellipse at 70% 30%, rgba(190,215,240,0.3) 0%, transparent 50%), linear-gradient(180deg, #c4d7ea 0%, #d0dfed 25%, #dce7f0 50%, #e3eaf1 75%, #e0e6ee 100%)', text: '' },
+  { label: 'Sunny Day', dot: '#f59e0b', bg: 'radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 40%, rgba(254,249,195,0.2) 0%, transparent 40%), linear-gradient(180deg, #87CEEB 0%, #B0E0E6 20%, #e0ead8 50%, #d4d0c6 80%, #ccc8bf 100%)', text: '#3a3520' },
+  { label: 'Cloudy', dot: '#94a3b8', bg: 'radial-gradient(ellipse at 30% 15%, rgba(255,255,255,0.5) 0%, transparent 35%), radial-gradient(ellipse at 70% 25%, rgba(203,213,225,0.4) 0%, transparent 40%), radial-gradient(ellipse at 50% 70%, rgba(226,232,240,0.3) 0%, transparent 50%), linear-gradient(180deg, #b4c0d4 0%, #cbd5e1 25%, #e2e8f0 50%, #dde1ea 75%, #d5d9e5 100%)', text: '' },
+  { label: 'Sunset', dot: '#e8855a', bg: 'radial-gradient(ellipse at 60% 10%, rgba(255,180,100,0.35) 0%, transparent 45%), radial-gradient(ellipse at 30% 35%, rgba(240,140,120,0.25) 0%, transparent 45%), radial-gradient(ellipse at 65% 65%, rgba(200,120,160,0.2) 0%, transparent 40%), linear-gradient(180deg, #f5c77e 0%, #eda06a 15%, #e88565 30%, #d8707a 50%, #b86b8a 65%, #7a5080 82%, #3d2b52 100%)', text: '#3d2b52' },
+  { label: 'Rainy', dot: '#64748b', bg: 'radial-gradient(ellipse at 40% 20%, rgba(148,163,184,0.3) 0%, transparent 45%), radial-gradient(ellipse at 70% 60%, rgba(100,116,139,0.2) 0%, transparent 50%), linear-gradient(180deg, #94a3b8 0%, #a8b5c5 20%, #b8c2ce 40%, #c4cdd6 60%, #bfc8d1 80%, #b0b8c2 100%)', text: '#1e293b' },
+  { label: 'Foggy', dot: '#d1d5db', bg: 'radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.4) 0%, transparent 60%), linear-gradient(180deg, #d1d5db 0%, #dde0e4 20%, #e5e7eb 40%, #ebedf0 60%, #e8eaed 80%, #e2e4e7 100%)', text: '#6b7280' },
+  { label: 'Snowy', dot: '#e5e7eb', bg: 'radial-gradient(ellipse at 40% 20%, rgba(255,255,255,0.6) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(219,234,254,0.3) 0%, transparent 40%), linear-gradient(180deg, #e0e5ec 0%, #ebeef3 20%, #f1f3f7 40%, #f5f7fa 60%, #eef1f5 80%, #e4e8ee 100%)', text: '#4b5563' },
+  { label: 'Night', dot: '#1e293b', bg: 'radial-gradient(ellipse at 30% 20%, rgba(30,58,138,0.3) 0%, transparent 45%), radial-gradient(ellipse at 70% 50%, rgba(49,46,89,0.25) 0%, transparent 40%), linear-gradient(180deg, #0f172a 0%, #1e1b4b 20%, #1e293b 40%, #27344a 60%, #1e293b 80%, #0f172a 100%)', text: '#cbd5e1' },
+];
+var bar = document.getElementById('atmosphere-bar');
+atmospheres.forEach(function(a, i) {
+  var btn = document.createElement('button');
+  btn.className = 'atmosphere-btn' + (i === 0 ? ' active' : '');
+  btn.innerHTML = '<span class="atmosphere-dot" style="background:' + a.dot + '"></span>' + a.label;
+  btn.onclick = function() {
+    document.body.style.background = a.bg;
+    document.body.style.backgroundAttachment = 'fixed';
+    if (a.text) { document.body.style.color = a.text; document.querySelector(':root').style.setProperty('--text', a.text); }
+    else { document.body.style.color = ''; document.querySelector(':root').style.setProperty('--text', '#1a1a2e'); }
+    bar.querySelectorAll('.atmosphere-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+  };
+  bar.appendChild(btn);
+});
 
 // Swipe on stacked rows
 function addRowSwipe(row) {

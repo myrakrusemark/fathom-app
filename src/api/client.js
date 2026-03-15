@@ -47,6 +47,23 @@ export function sendMessage(text) {
   });
 }
 
+export function uploadAttachment(file, message = "") {
+  const conn = getConnection();
+  if (!conn) throw new Error("Not connected");
+  const ws = getWorkspace();
+  const form = new FormData();
+  form.append("file", file);
+  if (message) form.append("message", message);
+  return fetch(`${conn.serverUrl}/api/conversation/${ws}/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${conn.apiKey}` },
+    body: form,
+  }).then((r) => {
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+  });
+}
+
 export function sendVoice(text, duration = 0) {
   const ws = getWorkspace();
   return request("/api/voice/send", {

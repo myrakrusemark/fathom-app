@@ -12,7 +12,7 @@ import SettingsModal from "./components/SettingsModal.jsx";
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
   const [pendingVoice, setPendingVoice] = useState("");
-  const [receiptId, setReceiptId] = useState(null);
+  const [dispatchItem, setDispatchItem] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [feedMode, setFeedMode] = useState("lived");
@@ -83,7 +83,7 @@ export default function App() {
           <Route path="/" element={
             <Feed
               onChatOpen={() => { setUnreadCount(0); setChatOpen(true); }}
-              onOpenReceipt={(id) => setReceiptId(id)}
+              onOpenReceipt={(item) => setDispatchItem(item)}
               onStartTour={() => setShowOnboarding(true)}
               feedMode={feedMode}
               onToggleMode={handleToggleMode}
@@ -110,8 +110,8 @@ export default function App() {
           onUnread={(count) => setUnreadCount((prev) => prev + count)}
         />
         <ReceiptDetail
-          receiptId={receiptId}
-          onClose={() => setReceiptId(null)}
+          item={dispatchItem}
+          onClose={() => setDispatchItem(null)}
         />
         <SettingsModal
           open={settingsOpen}

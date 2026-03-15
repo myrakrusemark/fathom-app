@@ -9,7 +9,6 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unre
   const [listening, setListening] = useState(false);
   const holdTimer = useRef(null);
   const recognitionRef = useRef(null);
-  const isHolding = useRef(false);
   const didLongPress = useRef(false);
   const listenStart = useRef(null);
 
@@ -32,7 +31,6 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unre
       const duration = Math.round((Date.now() - (listenStart.current || Date.now())) / 1000);
       setListening(false);
       if (transcript.trim()) {
-        // Send as voice message to the server, then open chat
         sendVoice(transcript.trim(), duration).catch(() => {});
         onVoiceResult(transcript.trim());
       }
@@ -56,44 +54,31 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unre
     }
   }, []);
 
-  function handlePointerDown(e) {
-    e.preventDefault();
-    isHolding.current = true;
+  // Touch: hold to record (mobile only)
+  function handleTouchStart() {
     didLongPress.current = false;
-
     holdTimer.current = setTimeout(() => {
-      if (isHolding.current) {
-        didLongPress.current = true;
-        startListening();
-      }
+      didLongPress.current = true;
+      startListening();
     }, 400);
   }
 
-  function handlePointerUp(e) {
-    e.preventDefault();
-    isHolding.current = false;
-
+  function handleTouchEnd(e) {
     if (holdTimer.current) {
       clearTimeout(holdTimer.current);
       holdTimer.current = null;
     }
-
     if (didLongPress.current) {
+      e.preventDefault(); // prevent click from also firing after long press
       stopListening();
       didLongPress.current = false;
-    } else {
-      onChatOpen();
     }
   }
 
-  function handlePointerCancel() {
-    isHolding.current = false;
-    if (holdTimer.current) {
-      clearTimeout(holdTimer.current);
-      holdTimer.current = null;
-    }
-    stopListening();
-    didLongPress.current = false;
+  // Click: open chat (works on both desktop and mobile tap)
+  function handleClick() {
+    if (didLongPress.current) return; // long press already handled
+    onChatOpen();
   }
 
   return (
@@ -106,10 +91,9 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unre
       </NavLink>
       <button
         className={`nav-chat-btn ${listening ? "listening" : ""}`}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
-        onPointerLeave={handlePointerCancel}
+        onClick={handleClick}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         aria-label="Talk to Fathom"
       >
         {unreadCount > 0 && <span className="nav-chat-badge">{unreadCount}</span>}
