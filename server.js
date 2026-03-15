@@ -803,15 +803,11 @@ document.querySelectorAll('.feed-item:not(.feed-item-stacked)').forEach(card => 
     dx = e.touches[0].clientX - startX;
     if (dx > 0) {
       card.style.transform = 'translateX(' + dx + 'px)';
-      card.style.opacity = Math.max(0, 1 - dx/200);
-      if (dx > 40) bg.classList.add('visible');
-      else bg.classList.remove('visible');
     }
   }, {passive: true});
   card.addEventListener('touchend', () => {
-    bg.classList.remove('visible');
     if (dx > 100) { dismissCard(card); }
-    else { card.style.transform = ''; card.style.opacity = ''; }
+    else { card.style.transform = ''; }
   });
 });
 </script>
