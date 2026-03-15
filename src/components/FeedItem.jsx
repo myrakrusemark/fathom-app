@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
@@ -23,8 +23,43 @@ function authUrl(url) {
   return conn.serverUrl + url + sep + "token=" + conn.apiKey;
 }
 
+const SWIPE_THRESHOLD = 100;
+
 export default function FeedItem({ item, stackedItems, onOpenReceipt, onSelect, onDismiss }) {
   const [expanded, setExpanded] = useState(false);
+  const cardRef = useRef(null);
+  const swipeStart = useRef(0);
+  const swipeDx = useRef(0);
+
+  const handleTouchStart = useCallback((e) => {
+    swipeStart.current = e.touches[0].clientX;
+    swipeDx.current = 0;
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    swipeDx.current = e.touches[0].clientX - swipeStart.current;
+    if (swipeDx.current > 0 && cardRef.current) {
+      cardRef.current.style.transform = `translateX(${swipeDx.current}px)`;
+      cardRef.current.style.opacity = String(Math.max(0, 1 - swipeDx.current / 300));
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    const el = cardRef.current;
+    if (swipeDx.current > SWIPE_THRESHOLD && onDismiss) {
+      if (el) {
+        el.style.transition = "transform 0.3s, opacity 0.3s";
+        el.style.transform = "translateX(100%)";
+        el.style.opacity = "0";
+      }
+      setTimeout(() => onDismiss(item.id), 300);
+    } else if (el) {
+      el.style.transition = "transform 0.2s, opacity 0.2s";
+      el.style.transform = "";
+      el.style.opacity = "";
+      setTimeout(() => { if (cardRef.current) cardRef.current.style.transition = ""; }, 200);
+    }
+  }, [onDismiss, item.id]);
 
   // Stacked card — multiple same-workspace items in one cell
   if (stackedItems && stackedItems.length > 1) {
@@ -92,9 +127,13 @@ export default function FeedItem({ item, stackedItems, onOpenReceipt, onSelect, 
 
   return (
     <article
+      ref={cardRef}
       className={`feed-item${item.layout ? ` layout-${item.layout}` : ""}`}
       onClick={handleClick}
       onKeyDown={(e) => { if (e.key === "Enter") handleClick(); }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       tabIndex={0}
       role="button"
     >
