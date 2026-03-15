@@ -790,24 +790,15 @@ function dismissFromPanel() {
 
 // --- Swipe to dismiss ---
 document.querySelectorAll('.feed-item:not(.feed-item-stacked)').forEach(card => {
-  // Add swipe reveal background
-  var bg = document.createElement('div');
-  bg.className = 'feed-item-swipe-bg';
-  bg.innerHTML = '<div class="feed-item-swipe-icon">&#x2713;</div>';
-  card.style.position = 'relative';
-  card.insertBefore(bg, card.firstChild);
-
   var startX = 0, dx = 0;
   card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dx = 0; }, {passive: true});
   card.addEventListener('touchmove', e => {
     dx = e.touches[0].clientX - startX;
-    if (dx > 0) {
-      card.style.transform = 'translateX(' + dx + 'px)';
-    }
+    if (dx > 0) card.style.transform = 'translateX(' + dx + 'px)';
   }, {passive: true});
   card.addEventListener('touchend', () => {
-    if (dx > 100) { dismissCard(card); }
-    else { card.style.transform = ''; }
+    if (dx > 100) dismissCard(card);
+    else card.style.transform = '';
   });
 });
 </script>
