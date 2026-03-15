@@ -604,7 +604,7 @@ app.get("/demo", (req, res) => {
 <style>body { padding: 20px; }</style>
 </head><body>
 <div class="page" style="max-width: 1200px; margin: 0 auto;">
-  <header class="page-header"><h1>fathom</h1><span class="header-subtitle">newspaper grid demo</span></header>
+  <header class="page-header"><h1>fathom</h1><span class="header-subtitle">updates</span></header>
   <div class="feed" id="main-feed">${cards}</div>
   <div class="feed-earlier" id="earlier-section" style="display:none">
     <button class="feed-earlier-toggle" onclick="document.getElementById('earlier-list').style.display=document.getElementById('earlier-list').style.display==='none'?'block':'none';this.querySelector('.feed-earlier-chevron').classList.toggle('open')">
