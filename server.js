@@ -737,13 +737,37 @@ function dismissStackedRow(row) {
         document.getElementById('earlier-count').textContent = document.getElementById('earlier-list').children.length;
       }
     }
-    // Update stacked card count
-    var parent = document.querySelector('.feed-item-stacked');
-    if (parent) {
+    // Update stacked card — check all stacked cards
+    document.querySelectorAll('.feed-item-stacked').forEach(parent => {
       var rows = parent.querySelectorAll('.feed-stacked-row:not(.feed-stacked-more):not(.feed-stacked-less)');
+      var visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
       var countEl = parent.querySelector('.feed-item-time');
-      if (countEl) countEl.textContent = rows.length + ' items';
-    }
+
+      if (visibleRows.length <= 1 && visibleRows.length > 0) {
+        // Revert to regular card
+        var lastRow = visibleRows[0];
+        var lastIdx = lastRow.getAttribute('data-idx');
+        var lastItem = items[parseInt(lastIdx)];
+        if (lastItem) {
+          var newCard = document.createElement('article');
+          newCard.className = 'feed-item';
+          newCard.setAttribute('data-idx', lastIdx);
+          newCard.onclick = function() { openPanel(parseInt(lastIdx)); };
+          newCard.innerHTML =
+            '<button class="feed-item-dismiss" onclick="event.stopPropagation();dismissCard(this.parentElement)">&times;</button>' +
+            '<h3 class="feed-item-title">' + lastItem.title + '</h3>' +
+            '<div class="feed-item-body">' + lastItem.body + '</div>' +
+            '<div class="feed-item-footer">' +
+              '<span class="feed-item-dot" style="background-color:' + lastItem.workspace_color + '"></span>' +
+              '<span class="feed-item-workspace">' + lastItem.workspace_name + '</span>' +
+              '<span class="feed-item-time">' + lastItem.timestamp + '</span>' +
+            '</div>';
+          parent.replaceWith(newCard);
+        }
+      } else if (countEl) {
+        countEl.textContent = visibleRows.length + ' items';
+      }
+    });
   }, 150);
 }
 
@@ -766,13 +790,26 @@ function dismissFromPanel() {
 
 // --- Swipe to dismiss ---
 document.querySelectorAll('.feed-item:not(.feed-item-stacked)').forEach(card => {
+  // Add swipe reveal background
+  var bg = document.createElement('div');
+  bg.className = 'feed-item-swipe-bg';
+  bg.innerHTML = '<div class="feed-item-swipe-icon">&#x2713;</div>';
+  card.style.position = 'relative';
+  card.insertBefore(bg, card.firstChild);
+
   var startX = 0, dx = 0;
   card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dx = 0; }, {passive: true});
   card.addEventListener('touchmove', e => {
     dx = e.touches[0].clientX - startX;
-    if (dx > 0) { card.style.transform = 'translateX(' + dx + 'px)'; card.style.opacity = Math.max(0, 1 - dx/200); }
+    if (dx > 0) {
+      card.style.transform = 'translateX(' + dx + 'px)';
+      card.style.opacity = Math.max(0, 1 - dx/200);
+      if (dx > 40) bg.classList.add('visible');
+      else bg.classList.remove('visible');
+    }
   }, {passive: true});
   card.addEventListener('touchend', () => {
+    bg.classList.remove('visible');
     if (dx > 100) { dismissCard(card); }
     else { card.style.transform = ''; card.style.opacity = ''; }
   });
