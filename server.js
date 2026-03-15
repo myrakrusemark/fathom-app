@@ -230,9 +230,9 @@ const FEED_ITEMS = [
     timestamp: minutesAgo(25),
     title: "Found 4 tops on ASOS Tall",
     body: "Structured button-up in olive, linen blend. Your size, good reviews. Also a rust-colored camp collar that feels very you.",
-    images: [
-      { alt: "Olive button-up", placeholder: true },
-      { alt: "Rust camp collar", placeholder: true },
+    attachments: [
+      { label: "Olive button-up", type: "image", placeholder: true },
+      { label: "Rust camp collar", type: "image", placeholder: true },
     ],
     actions: ["approve", "reject", "more"],
   },
@@ -253,6 +253,9 @@ const FEED_ITEMS = [
     timestamp: minutesAgo(180),
     title: "Note 96: Seregin's weighted energy condition",
     body: "Analyzed whether condition (4.4) is automatic. Physically yes (smooth-data blow-up decays into smooth exterior), technically no (weak compactness doesn't preserve far-field decay). Connection: outgoing property closes the gap.",
+    attachments: [
+      { url: "/api/vault/raw/research/note-96.md?workspace=navier-stokes", label: "Note 96: Seregin Analysis", type: "markdown", size: 4200 },
+    ],
     actions: ["expand"],
   },
   {
@@ -471,6 +474,17 @@ app.post("/api/chat", (req, res) => {
   CHAT_MESSAGES.push(agentMsg);
 
   res.json({ userMsg, agentMsg });
+});
+
+app.post("/api/feed/react", (req, res) => {
+  const { workspace, reaction, title, body } = req.body;
+  if (!workspace || !reaction) {
+    return res.status(400).json({ error: "workspace and reaction required" });
+  }
+  const emoji = reaction === "up" ? "\u{1F44D}" : "\u{1F44E}";
+  const dmMessage = `${emoji} Human ${reaction === "up" ? "liked" : "disliked"} your notification:\n\n**${title}**\n${body}`;
+  console.log(`[DM → ${workspace}] ${dmMessage}`);
+  res.json({ ok: true, workspace, reaction, dm: dmMessage });
 });
 
 app.get("/api/workspaces", (req, res) => {

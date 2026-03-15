@@ -286,7 +286,6 @@ body {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-dim);
-  text-transform: lowercase;
 }
 
 .feed-item-time {
@@ -336,6 +335,14 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+.feed-item-image {
+  max-width: 200px;
+  max-height: 150px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .feed-item-image-placeholder {
   min-width: 120px;
   height: 90px;
@@ -348,6 +355,74 @@ body {
   font-size: 11px;
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+.feed-item-audio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.feed-item-audio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feed-item-audio-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.feed-item-audio audio {
+  height: 32px;
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-item-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.feed-item-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.feed-item-file-chip:hover {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.file-chip-icon {
+  font-size: 13px;
+}
+
+.file-chip-label {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-chip-size {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .feed-item-actions {
@@ -866,6 +941,27 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 0 4px 6px;
+}
+
+.workspace-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+}
+
+.workspace-group-header .workspace-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.workspace-group-description {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: -4px 0 6px 4px;
+  opacity: 0.7;
 }
 
 .routine-row {
@@ -1996,12 +2092,18 @@ body {
 }
 
 /* --- Chat Tool Use Indicator --- */
-.chat-tool-use {
+.chat-tool-group {
   align-self: flex-start;
   display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 4px 12px;
+}
+
+.chat-tool-use {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
   font-size: 12px;
   color: var(--text-muted);
 }
