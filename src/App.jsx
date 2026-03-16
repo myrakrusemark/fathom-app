@@ -105,8 +105,6 @@ export default function App() {
               userName={userName}
               selectedInterests={selectedInterests}
               unreadCount={unreadCount}
-              atmosphere={atmosphere}
-              onAtmosphereChange={setAtmosphere}
             />
           } />
           <Route path="/backstage" element={<Backstage />} />
@@ -132,6 +130,8 @@ export default function App() {
           onClose={() => setSettingsOpen(false)}
           onConnectionChange={handleConnectionChange}
           isGate={false}
+          atmosphere={atmosphere}
+          onAtmosphereChange={setAtmosphere}
         />
       </div>
     </>

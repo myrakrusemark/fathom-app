@@ -9,8 +9,9 @@ import {
   uninstallPackage,
 } from "../api/client.js";
 import TabBar from "./TabBar.jsx";
+import { ATMOSPHERES } from "../data/atmospheres.js";
 
-export default function SettingsModal({ open, onClose, onConnectionChange, isGate }) {
+export default function SettingsModal({ open, onClose, onConnectionChange, isGate, atmosphere, onAtmosphereChange }) {
   const [tab, setTab] = useState("connection");
   const [serverUrl, setServerUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
@@ -191,6 +192,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
 
   const tabs = [
     { id: "connection", label: "Connection" },
+    { id: "themes", label: "Themes" },
     { id: "comms", label: "Comms" },
     { id: "packages", label: "Packages" },
   ];
@@ -307,6 +309,22 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                 </button>
               )}
             </>
+          )}
+
+          {/* Themes tab */}
+          {!isGate && tab === "themes" && (
+            <div className="atmosphere-bar">
+              {ATMOSPHERES.map((a, i) => (
+                <button
+                  key={a.label}
+                  className={`atmosphere-btn${atmosphere === i ? " active" : ""}`}
+                  onClick={() => onAtmosphereChange(i)}
+                >
+                  <span className="atmosphere-dot" style={{ background: a.dot }} />
+                  {a.label}
+                </button>
+              ))}
+            </div>
           )}
 
           {/* Comms tab */}

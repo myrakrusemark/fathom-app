@@ -121,25 +121,6 @@ function ListIcon() {
   );
 }
 
-import { ATMOSPHERES } from "../data/atmospheres.js";
-
-function AtmosphereBar({ active, onSelect }) {
-  return (
-    <div className="atmosphere-bar">
-      {ATMOSPHERES.map((a, i) => (
-        <button
-          key={a.label}
-          className={`atmosphere-btn${active === i ? " active" : ""}`}
-          onClick={() => onSelect(i)}
-        >
-          <span className="atmosphere-dot" style={{ background: a.dot }} />
-          {a.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // --- Main Feed ---
 
 export default function Feed({
@@ -150,8 +131,6 @@ export default function Feed({
   userName,
   selectedInterests,
   unreadCount = 0,
-  atmosphere = 0,
-  onAtmosphereChange,
 }) {
   // Lived mode state
   const [allItems, setAllItems] = useState([]);
@@ -329,8 +308,6 @@ export default function Feed({
           </svg>
         </button>
       </header>
-
-      {!isFresh && <AtmosphereBar active={atmosphere} onSelect={onAtmosphereChange} />}
 
       {isFresh ? (
         <>

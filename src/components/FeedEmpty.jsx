@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { getSuggestions, postToRoom } from "../api/client.js";
+import { getSuggestions, postToRoom, fireRoutine } from "../api/client.js";
+
+const SCOUT_ROUTINE_ID = "d096aff5";
 
 function PlusCircle() {
   return (
@@ -18,11 +20,19 @@ function SendIcon() {
   );
 }
 
+function ScoutIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" width="28" height="28">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  );
+}
+
 export default function FeedEmpty() {
   const [suggestions, setSuggestions] = useState([]);
   const [customText, setCustomText] = useState("");
-  const [sending, setSending] = useState(null); // title or "custom"
-  const [sent, setSent] = useState(null);
+  const [phase, setPhase] = useState("browse"); // "browse" | "sending" | "confirmed"
 
   useEffect(() => {
     getSuggestions()
@@ -34,45 +44,70 @@ export default function FeedEmpty() {
       .catch(() => {});
   }, []);
 
+  function sendToScout(message) {
+    setPhase("sending");
+    // Post DM so Scout has the request, then fire Scout's routine
+    Promise.all([
+      postToRoom("dm:myra+scout", message, "myra"),
+      fireRoutine(SCOUT_ROUTINE_ID),
+    ])
+      .then(() => setPhase("confirmed"))
+      .catch(() => setPhase("confirmed")); // show confirmation even on error
+  }
+
   function handlePick(suggestion) {
-    setSending(suggestion.title);
-    postToRoom(
-      "dm:myra+scout",
-      `Myra picked: "${suggestion.title}"`,
-      "myra"
-    )
-      .then(() => {
-        setSent(suggestion.title);
-        setSending(null);
-      })
-      .catch(() => setSending(null));
+    sendToScout(
+      `[APP REQUEST] Myra picked: "${suggestion.title}". ` +
+      `DO NOT reply to this DM — she won't see it. ` +
+      `Follow up by posting a #notification (featured layout) with your plan or clarifying questions. See CLAUDE.md § Route Requests.`
+    );
   }
 
   function handleCustom(e) {
     e.preventDefault();
     if (!customText.trim()) return;
-    setSending("custom");
-    postToRoom(
-      "dm:myra+scout",
-      `Myra wants: ${customText.trim()}`,
-      "myra"
-    )
-      .then(() => {
-        setSent("custom");
-        setSending(null);
-        setCustomText("");
-      })
-      .catch(() => setSending(null));
+    sendToScout(
+      `[APP REQUEST] Myra wants: ${customText.trim()}. ` +
+      `DO NOT reply to this DM — she won't see it. ` +
+      `Follow up by posting a #notification (featured layout) with your plan or clarifying questions. See CLAUDE.md § Route Requests.`
+    );
   }
 
+  // Confirmed state — Scout is on it
+  if (phase === "confirmed") {
+    return (
+      <div className="feed-empty feed-empty-confirmed">
+        <div className="feed-empty-scout-icon">
+          <ScoutIcon />
+        </div>
+        <div className="feed-empty-bubble">
+          Thanks! Watch your feed for updates.
+        </div>
+      </div>
+    );
+  }
+
+  // Sending state — brief transition
+  if (phase === "sending") {
+    return (
+      <div className="feed-empty feed-empty-sending">
+        <div className="feed-empty-icon">
+          <PlusCircle />
+        </div>
+        <p className="feed-empty-subtitle">Sending to Scout...</p>
+      </div>
+    );
+  }
+
+  // Browse state — show suggestions
   return (
     <div className="feed-empty">
       <div className="feed-empty-icon">
         <PlusCircle />
       </div>
-      <h2 className="feed-empty-title">Nobody likes an empty feed!</h2>
+      <h2 className="feed-empty-title">All caught up</h2>
       <p className="feed-empty-subtitle">
-        Here are some things you might be into right now
+        Scout found some things worth starting
       </p>
 
       {suggestions.length > 0 && (
@@ -80,13 +115,11 @@ export default function FeedEmpty() {
           {suggestions.map((s) => (
             <button
               key={s.title}
-              className={`feed-empty-card${sent === s.title ? " sent" : ""}`}
+              className="feed-empty-card"
               onClick={() => handlePick(s)}
-              disabled={sending !== null}
             >
               {s.emoji && <span className="feed-empty-card-emoji">{s.emoji}</span>}
               <span className="feed-empty-card-text">{s.title}</span>
-              {sent === s.title && <span className="feed-empty-card-check">&#10003;</span>}
             </button>
           ))}
         </div>
@@ -95,17 +128,16 @@ export default function FeedEmpty() {
       <form className="feed-empty-input" onSubmit={handleCustom}>
         <input
           type="text"
-          placeholder="Or type something specific..."
+          placeholder="Or tell me what you need..."
           value={customText}
           onChange={(e) => setCustomText(e.target.value)}
-          disabled={sending !== null}
         />
         <button
           type="submit"
           className="feed-empty-send"
-          disabled={!customText.trim() || sending !== null}
+          disabled={!customText.trim()}
         >
-          {sent === "custom" ? "\u2713" : <SendIcon />}
+          <SendIcon />
         </button>
       </form>
     </div>

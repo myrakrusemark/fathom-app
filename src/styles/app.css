@@ -4027,6 +4027,39 @@ body {
   cursor: default;
 }
 
+/* Confirmed state */
+.feed-empty-confirmed {
+  animation: feedEmptyFadeIn 0.4s ease-out;
+}
+.feed-empty-sending {
+  animation: feedEmptyPulse 1s ease-in-out infinite;
+}
+.feed-empty-scout-icon {
+  margin-bottom: 12px;
+  opacity: 0.8;
+}
+.feed-empty-bubble {
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 16px 16px 16px 4px;
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  max-width: 320px;
+  text-align: left;
+}
+@keyframes feedEmptyFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes feedEmptyPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
 .loading {
   text-align: center;
   padding: 48px 16px;
