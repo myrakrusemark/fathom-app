@@ -27,6 +27,14 @@ export function getFeed() {
   return request("/api/feed");
 }
 
+export function dismissFeedItem(itemId) {
+  return request(`/api/feed/dismiss/${encodeURIComponent(itemId)}`, { method: "POST" });
+}
+
+export function restoreFeedItem(itemId) {
+  return request(`/api/feed/dismiss/${encodeURIComponent(itemId)}`, { method: "DELETE" });
+}
+
 export function getRoutines() {
   return request("/api/routines");
 }
@@ -96,8 +104,14 @@ export function postToRoom(roomName, message, sender = "myra") {
   });
 }
 
-export function readRoom(roomName, minutes = 60) {
-  return request(`/api/room/${encodeURIComponent(roomName)}?minutes=${minutes}`);
+export function readRoom(roomName, minutes = 60, workspace = null) {
+  let url = `/api/room/${encodeURIComponent(roomName)}?minutes=${minutes}`;
+  if (workspace) url += `&workspace=${encodeURIComponent(workspace)}`;
+  return request(url);
+}
+
+export function listRooms(workspace = "myra") {
+  return request(`/api/room/list?workspace=${encodeURIComponent(workspace)}`);
 }
 
 export function sendReaction(workspace, reaction, item) {

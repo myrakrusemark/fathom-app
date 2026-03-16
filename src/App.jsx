@@ -5,14 +5,12 @@ import Feed from "./components/Feed.jsx";
 import Routines from "./components/Routines.jsx";
 import ChatSheet from "./components/ChatSheet.jsx";
 import NavBar from "./components/NavBar.jsx";
-import ReceiptDetail from "./components/ReceiptDetail.jsx";
 import Onboarding from "./components/Onboarding.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
 
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
   const [pendingVoice, setPendingVoice] = useState("");
-  const [dispatchItem, setDispatchItem] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [feedMode, setFeedMode] = useState("lived");
@@ -83,7 +81,6 @@ export default function App() {
           <Route path="/" element={
             <Feed
               onChatOpen={() => { setUnreadCount(0); setChatOpen(true); }}
-              onOpenReceipt={(item) => setDispatchItem(item)}
               onStartTour={() => setShowOnboarding(true)}
               feedMode={feedMode}
               onToggleMode={handleToggleMode}
@@ -108,10 +105,6 @@ export default function App() {
           pendingVoice={pendingVoice}
           feedMode={feedMode}
           onUnread={(count) => setUnreadCount((prev) => prev + count)}
-        />
-        <ReceiptDetail
-          item={dispatchItem}
-          onClose={() => setDispatchItem(null)}
         />
         <SettingsModal
           open={settingsOpen}

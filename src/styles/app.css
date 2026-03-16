@@ -42,6 +42,7 @@ html, body {
 
 body {
   min-height: 100dvh;
+  transition: background 0.8s ease, color 0.4s ease;
 }
 
 #root {
@@ -83,6 +84,49 @@ body {
   font-size: 14px;
   color: var(--text-dim);
   font-weight: 400;
+}
+
+.atmosphere-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 8px 0;
+}
+
+.atmosphere-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: inherit;
+}
+
+.atmosphere-btn:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.atmosphere-btn.active {
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.atmosphere-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .weather-pill {
@@ -286,8 +330,9 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: auto;
-  padding-top: 8px;
+  margin: auto -16px -14px;
+  padding: 8px 16px;
+  border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
 }
 
 .feed-item-dot {
@@ -321,9 +366,7 @@ body {
   font-size: 14px;
   color: var(--text-dim);
   line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  flex: 1;
   overflow: hidden;
 }
 
@@ -2826,6 +2869,34 @@ body {
   opacity: 0.6;
 }
 
+.feed-item-unread-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.feed-item-title .feed-item-unread-dot {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.feed-stacked-attachments {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.feed-stacked-attachments svg {
+  opacity: 0.6;
+}
+
 .feed-stacked-dismiss:hover {
   background: rgba(0, 0, 0, 0.12);
   color: var(--text);
@@ -2842,7 +2913,9 @@ body {
 }
 
 .feed-item-stacked .feed-item-footer {
+  margin: auto 0 0;
   padding: 8px 16px 10px;
+  border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
 }
 
 /* --- Responsive: desktop newspaper grid --- */
@@ -2901,11 +2974,10 @@ body {
     max-height: none;
   }
 
-  /* Standard: default 1x1, truncate body */
+  /* Standard: default 1x1 — body fills available flex space */
   .feed-item.layout-standard .feed-item-body:not(.expanded),
   .feed-item:not([class*="layout-"]) .feed-item-body:not(.expanded) {
     display: block;
-    max-height: 6.5em;
   }
 
   /* Compact: tight, minimal */
@@ -2982,6 +3054,9 @@ body {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .feed-panel-chat-label {

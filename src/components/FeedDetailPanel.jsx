@@ -7,6 +7,7 @@ import PhotoSwipeLightbox from "photoswipe/lightbox";
 import "photoswipe/style.css";
 import { sendReaction, postToRoom, readRoom } from "../api/client.js";
 import { getConnection } from "../lib/connection.js";
+import ChatMessage from "./ChatMessage.jsx";
 
 function timeAgo(timestamp) {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -34,6 +35,14 @@ function authUrl(url) {
   return conn.serverUrl + url + sep + "token=" + conn.apiKey;
 }
 
+function stripChatDecorations(text) {
+  // Strip @workspace prefix
+  let cleaned = text.replace(/^@\S+\s/, "");
+  // Strip trailing context block
+  cleaned = cleaned.replace(/\n\n\(Context: reply to notification .+\)$/, "");
+  return cleaned;
+}
+
 export default function FeedDetailPanel({ item, onClose, onDismiss }) {
   const [visible, setVisible] = useState(false);
   const storageKey = `reaction:${item.id}`;
@@ -45,6 +54,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
   const [chatMessages, setChatMessages] = useState([]);
   const inputRef = useRef(null);
   const pollRef = useRef(null);
+  const lastSendRef = useRef(null);
 
   const roomName = `notif-${item.workspace}-${item.id}`;
 
@@ -56,7 +66,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
   // Poll room for replies while panel is open
   useEffect(() => {
     function poll() {
-      readRoom(roomName, 1440)
+      readRoom(roomName, 1440, "myra")
         .then((data) => {
           const msgs = (data.messages || []).map((m) => ({
             id: m.id,
@@ -82,9 +92,16 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
     e.preventDefault();
     if (!message.trim() || sending) return;
     setSending(true);
-    const text = `@${item.workspace} ${message}`;
+    const now = Date.now();
+    const gap = lastSendRef.current ? now - lastSendRef.current : Infinity;
+    const needsContext = gap > 15 * 60 * 1000;
+    let text = `@${item.workspace} ${message}`;
+    if (needsContext) {
+      text += `\n\n(Context: reply to notification ${item.id} — "${item.title}". Use fathom_room_read room="notification" to find the original, then reply in this room.)`;
+    }
     postToRoom(roomName, text)
       .then(() => {
+        lastSendRef.current = now;
         setMessage("");
         setChatMessages((prev) => [
           ...prev,
@@ -251,11 +268,17 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
             <div className="feed-panel-chat">
               <div className="feed-panel-chat-label">Thread</div>
               {chatMessages.map((msg) => (
-                <div key={msg.id} className={`feed-panel-chat-msg ${msg.sender === "myra" ? "mine" : ""}`}>
-                  <span className="feed-panel-chat-sender">{msg.sender}</span>
-                  <span className="feed-panel-chat-text">{msg.text}</span>
-                  <span className="feed-panel-chat-time">{timeAgo(msg.timestamp)}</span>
-                </div>
+                <ChatMessage
+                  key={msg.id}
+                  msg={{
+                    id: msg.id,
+                    role: msg.sender === "myra" ? "user" : "agent",
+                    type: "text",
+                    text: stripChatDecorations(msg.text),
+                    timestamp: msg.timestamp,
+                    memories: 0,
+                  }}
+                />
               ))}
             </div>
           )}
