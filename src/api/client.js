@@ -114,7 +114,7 @@ export function readRoom(roomName, minutes = 60, workspace = null) {
   return request(url);
 }
 
-export function listRooms(workspace = "myra") {
+export function listRooms(workspace = "*") {
   return request(`/api/room/list?workspace=${encodeURIComponent(workspace)}`);
 }
 

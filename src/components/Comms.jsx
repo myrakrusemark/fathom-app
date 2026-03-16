@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { listRooms, readRoom } from "../api/client.js";
+import { listRooms, readRoom, getWorkspaceProfiles } from "../api/client.js";
 
 function timeAgo(timestamp) {
   if (!timestamp) return "";
@@ -12,33 +12,66 @@ function timeAgo(timestamp) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function RoomRow({ room, onSelect }) {
+function prettyName(slug) {
+  return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function displayRoomName(name) {
+  if (name.startsWith("dm:")) {
+    const participants = name.slice(3).split("+");
+    return participants.map(prettyName).join(" · ");
+  }
+  if (name.startsWith("mentions:")) {
+    return `@${name.slice(9)}`;
+  }
+  if (name.startsWith("notif-")) {
+    return name;
+  }
+  return `#${name}`;
+}
+
+function roomType(name) {
+  if (name.startsWith("dm:")) return "dm";
+  if (name.startsWith("mentions:")) return "room";
+  if (name.startsWith("notif-")) return "thread";
+  return "room";
+}
+
+function RoomRow({ room, onSelect, showUnread = true }) {
   const unread = room.unread_count || 0;
+  const isDM = room.name.startsWith("dm:");
+  const isThread = room.name.startsWith("notif-");
 
   return (
-    <button className="room-row" onClick={() => onSelect(room.name)}>
+    <button className={`room-row ${isThread ? "thread" : ""}`} onClick={() => onSelect(room.name)}>
       <div className="room-row-main">
-        <span className="room-name">{room.name}</span>
+        <span className="room-name">
+          {isDM && <span className="room-type-badge dm">DM</span>}
+          {isThread && (
+            <span className="room-thread-count">{room.message_count || 0}</span>
+          )}
+          {displayRoomName(room.name)}
+        </span>
         {room.description && <span className="room-desc">{room.description}</span>}
       </div>
       <div className="room-row-meta">
-        {unread > 0 && <span className="room-badge">{unread}</span>}
+        {showUnread && unread > 0 && <span className="room-badge">{unread}</span>}
         <span className="room-ago">{timeAgo(room.last_activity)}</span>
       </div>
     </button>
   );
 }
 
-function RoomView({ roomName, onBack }) {
+function RoomView({ roomName, perspective, onBack }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    readRoom(roomName, 1440)
+    readRoom(roomName, 1440, perspective === "all" ? null : perspective)
       .then((data) => setMessages(data.messages || []))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [roomName]);
+  }, [roomName, perspective]);
 
   return (
     <div className="room-view">
@@ -46,7 +79,7 @@ function RoomView({ roomName, onBack }) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
           <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
-        {roomName}
+        {displayRoomName(roomName)}
       </button>
       <div className="room-messages">
         {loading && <div className="loading">loading...</div>}
@@ -67,19 +100,47 @@ function RoomView({ roomName, onBack }) {
 
 export default function Comms() {
   const [rooms, setRooms] = useState(null);
+  const [workspaces, setWorkspaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [typeFilter, setTypeFilter] = useState("all"); // "all" | "room" | "dm" | "thread"
+  const [perspective, setPerspective] = useState("all");
 
-  useEffect(() => {
-    listRooms()
+  function loadRooms(ws) {
+    setLoading(true);
+    listRooms(ws === "all" ? "*" : ws)
       .then((data) => setRooms(data.rooms || []))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadRooms(perspective);
+    getWorkspaceProfiles()
+      .then((data) => {
+        const entries = Object.entries(data.workspaces || data.profiles || data)
+          .filter(([, v]) => typeof v === "object" && v.type !== "human")
+          .map(([name]) => name);
+        setWorkspaces(entries);
+      })
+      .catch(() => {});
   }, []);
 
+  function handlePerspectiveChange(ws) {
+    setPerspective(ws);
+    loadRooms(ws);
+  }
+
+  async function markAllRead() {
+    if (!rooms) return;
+    const unread = rooms.filter((r) => (r.unread_count || 0) > 0);
+    await Promise.all(unread.map((r) => readRoom(r.name, 1, perspective)));
+    loadRooms(perspective);
+  }
+
   if (selectedRoom) {
-    return <RoomView roomName={selectedRoom} onBack={() => setSelectedRoom(null)} />;
+    return <RoomView roomName={selectedRoom} perspective={perspective} onBack={() => { loadRooms(perspective); setSelectedRoom(null); }} />;
   }
 
   if (loading) return <div className="loading">loading...</div>;
@@ -88,19 +149,55 @@ export default function Comms() {
     return <div className="empty-state">No rooms yet.</div>;
   }
 
-  // Sort: rooms with unread first, then by last_activity
-  const sorted = [...rooms].sort((a, b) => {
-    if ((b.unread_count || 0) !== (a.unread_count || 0)) {
-      return (b.unread_count || 0) - (a.unread_count || 0);
-    }
-    return (b.last_activity || 0) - (a.last_activity || 0);
+  const filtered = rooms.filter((r) => {
+    if (typeFilter === "all") return true;
+    return roomType(r.name) === typeFilter;
   });
+
+  const mentions = filtered.filter((r) => r.name.startsWith("mentions:"));
+  const rest = filtered.filter((r) => !r.name.startsWith("mentions:"));
+  const sorted = [
+    ...mentions.sort((a, b) => (b.last_activity || 0) - (a.last_activity || 0)),
+    ...rest.sort((a, b) => (b.last_activity || 0) - (a.last_activity || 0)),
+  ];
 
   return (
     <div className="comms-list">
+      <div className="comms-filter-bar">
+        <div className="routines-filter-chips">
+          {["all", "room", "dm", "thread"].map((t) => (
+            <button
+              key={t}
+              className={`routines-chip ${typeFilter === t ? "active" : ""}`}
+              onClick={() => setTypeFilter(t)}
+            >
+              {t === "all" ? "all" : t === "room" ? "rooms" : t === "dm" ? "DMs" : "threads"}
+            </button>
+          ))}
+        </div>
+        <select
+          className="comms-perspective-select"
+          value={perspective}
+          onChange={(e) => handlePerspectiveChange(e.target.value)}
+        >
+          <option value="all">All</option>
+          <option value="myra">Myra</option>
+          {workspaces.map((ws) => (
+            <option key={ws} value={ws}>{prettyName(ws)}</option>
+          ))}
+        </select>
+      </div>
+      {perspective !== "all" && rooms.some((r) => (r.unread_count || 0) > 0) && (
+        <div style={{ textAlign: "center", padding: "8px 0" }}>
+          <button className="routines-chip" onClick={markAllRead}>Mark all read</button>
+        </div>
+      )}
       {sorted.map((room) => (
-        <RoomRow key={room.name} room={room} onSelect={setSelectedRoom} />
+        <RoomRow key={room.name} room={room} onSelect={setSelectedRoom} showUnread={perspective !== "all"} />
       ))}
+      {sorted.length === 0 && (
+        <div className="empty-state">No matching rooms</div>
+      )}
     </div>
   );
 }

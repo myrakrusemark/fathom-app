@@ -26,8 +26,177 @@ function frequencyLabel(r) {
   return r.frequency || "on demand";
 }
 
-function RoutineRow({ routine, onFire }) {
-  const [expanded, setExpanded] = useState(false);
+function formatTimestamp(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return d.toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+  });
+}
+
+function RoutineDetailPanel({ routine, onClose, onFire }) {
+  const [visible, setVisible] = useState(false);
+  const [firing, setFiring] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true));
+  }, []);
+
+  function handleClose() {
+    setVisible(false);
+    setTimeout(onClose, 200);
+  }
+
+  async function handleFire() {
+    if (firing) return;
+    setFiring(true);
+    try {
+      await onFire(routine.id);
+    } finally {
+      setFiring(false);
+    }
+  }
+
+  const color = routine.workspace_color || "#888";
+  const enabled = routine.enabled !== false;
+  const schedule = routine.schedule || null;
+  const conditions = routine.conditions || [];
+  const cs = routine.context_sources || {};
+  const texts = cs.texts || [];
+  const scripts = cs.scripts || [];
+  const injectTime = cs.time !== false;
+
+  const hasPromptSources = injectTime || scripts.length > 0 || texts.length > 0;
+  const hasConditions = conditions.length > 0;
+
+  return (
+    <div className={`feed-panel-backdrop ${visible ? "visible" : ""}`} onClick={handleClose}>
+      <div className={`feed-panel ${visible ? "visible" : ""}`} onClick={(e) => e.stopPropagation()}>
+        <div className="feed-panel-scroll">
+          <div className="feed-panel-top-actions">
+            <button className="feed-panel-close" onClick={handleClose} aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="routine-detail-header">
+            <h2 className="routine-detail-name">{routine.name}</h2>
+            <span className="routine-detail-workspace">
+              <span className="workspace-color-dot" style={{ background: color }} />
+              {routine.workspace_name}
+            </span>
+          </div>
+
+          <button
+            className="routine-detail-fire-btn"
+            onClick={handleFire}
+            disabled={firing}
+          >
+            {firing ? "Firing..." : "Fire now"}
+          </button>
+
+          <div className="routine-detail-status">
+            <span
+              className="routine-detail-status-dot"
+              style={{ background: enabled ? "#4ADE80" : "rgba(168,212,180,0.3)" }}
+            />
+            <span>{enabled ? "Enabled" : "Disabled"}</span>
+            {schedule && <span className="routine-detail-schedule-pill">{schedule}</span>}
+          </div>
+
+          {routine.description && (
+            <p className="routine-detail-desc">{routine.description}</p>
+          )}
+
+          <div className="workspace-detail-fields">
+            <div className="workspace-detail-field">
+              <span className="workspace-detail-field-label">Schedule</span>
+              <span className="workspace-detail-field-value">
+                <code>{schedule || "on demand"}</code>
+              </span>
+            </div>
+            {routine.interval_minutes != null && (
+              <div className="workspace-detail-field">
+                <span className="workspace-detail-field-label">Interval</span>
+                <span className="workspace-detail-field-value">{routine.interval_minutes} min</span>
+              </div>
+            )}
+            <div className="workspace-detail-field">
+              <span className="workspace-detail-field-label">Single fire</span>
+              <span className="workspace-detail-field-value">{routine.single_fire ? "yes" : "no"}</span>
+            </div>
+            <div className="workspace-detail-field">
+              <span className="workspace-detail-field-label">Last fired</span>
+              <span className="workspace-detail-field-value">{formatTimestamp(routine.last_fire_at)}</span>
+            </div>
+            <div className="workspace-detail-field">
+              <span className="workspace-detail-field-label">Next fire</span>
+              <span className="workspace-detail-field-value">{formatTimestamp(routine.next_ping_at)}</span>
+            </div>
+          </div>
+
+          {hasConditions && (
+            <div className="routine-detail-context">
+              <div className="workspace-detail-section-label">Conditions</div>
+              <div className="routine-prompt-sources">
+                {conditions.map((c, i) => (
+                  <div key={i} className={`routine-prompt-source ${c.enabled === false ? "disabled" : ""}`}>
+                    <div className="routine-prompt-source-header">
+                      <span className="routine-prompt-source-type">gate</span>
+                      <span className="routine-prompt-source-label">{c.label || "Condition"}</span>
+                      {c.enabled === false && <span className="routine-prompt-source-off">off</span>}
+                    </div>
+                    <code className="routine-prompt-source-cmd">{c.command}</code>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {hasPromptSources && (
+            <div className="routine-detail-context">
+              <div className="workspace-detail-section-label">Prompt</div>
+              <div className="routine-prompt-sources">
+                {injectTime && (
+                  <div className="routine-prompt-source">
+                    <div className="routine-prompt-source-header">
+                      <span className="routine-prompt-source-type">inject</span>
+                      <span className="routine-prompt-source-label">Current date & time</span>
+                    </div>
+                  </div>
+                )}
+                {scripts.map((s, i) => (
+                  <div key={`s${i}`} className={`routine-prompt-source ${s.enabled === false ? "disabled" : ""}`}>
+                    <div className="routine-prompt-source-header">
+                      <span className="routine-prompt-source-type">script</span>
+                      <span className="routine-prompt-source-label">{s.label || "Script"}</span>
+                      {s.enabled === false && <span className="routine-prompt-source-off">off</span>}
+                    </div>
+                    <code className="routine-prompt-source-cmd">{s.command}</code>
+                  </div>
+                ))}
+                {texts.map((t, i) => (
+                  <div key={`t${i}`} className={`routine-prompt-source ${t.enabled === false ? "disabled" : ""}`}>
+                    <div className="routine-prompt-source-header">
+                      <span className="routine-prompt-source-type">text</span>
+                      <span className="routine-prompt-source-label">{t.label || `Block ${i + 1}`}</span>
+                      {t.enabled === false && <span className="routine-prompt-source-off">off</span>}
+                    </div>
+                    <pre className="routine-context-content">{t.content}</pre>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function RoutineRow({ routine, onFire, onSelect }) {
   const [firing, setFiring] = useState(false);
   const color = routine.workspace_color || "#888";
 
@@ -42,18 +211,10 @@ function RoutineRow({ routine, onFire }) {
     }
   }
 
-  const statusIcon = routine.recently_fired
-    ? "fired"
-    : routine.conditional
-      ? "conditional"
-      : !routine.enabled
-        ? "disabled"
-        : "waiting";
-
   return (
     <div
-      className={`routine-row ${statusIcon}`}
-      onClick={() => setExpanded(!expanded)}
+      className={`routine-row ${!routine.enabled ? "disabled" : ""}`}
+      onClick={() => onSelect?.(routine)}
     >
       <div className="routine-row-main">
         <button
@@ -75,7 +236,10 @@ function RoutineRow({ routine, onFire }) {
           )}
         </button>
         <div className="routine-info">
-          <span className="routine-name">{routine.name}</span>
+          <span className="routine-name">
+            {routine.name}
+            {routine.conditional && <span className="workspace-badge conditional">Conditional</span>}
+          </span>
           <span className="routine-workspace">{routine.workspace_name}</span>
         </div>
         <div className="routine-timing">
@@ -89,34 +253,26 @@ function RoutineRow({ routine, onFire }) {
           </span>
         </div>
       </div>
-      {expanded && (
-        <div className="routine-detail">
-          <p className="routine-description">{routine.description}</p>
-        </div>
-      )}
     </div>
   );
 }
 
-function groupByWorkspace(data) {
-  const all = [...data.recent, ...data.upcoming, ...data.disabled];
-  const groups = {};
-  for (const r of all) {
-    const ws = r.workspace_name || "unknown";
-    if (!groups[ws]) groups[ws] = { color: r.workspace_color || "#888", description: r.workspace_description || "", routines: [] };
-    groups[ws].routines.push(r);
-  }
-  // Sort: enabled first within each group
-  for (const g of Object.values(groups)) {
-    g.routines.sort((a, b) => (b.enabled ? 1 : 0) - (a.enabled ? 1 : 0));
-  }
-  return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+function matchesFilter(routine, query) {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  return (
+    (routine.name || "").toLowerCase().includes(q) ||
+    (routine.workspace_name || "").toLowerCase().includes(q) ||
+    (routine.description || "").toLowerCase().includes(q)
+  );
 }
 
 export default function Routines({ embedded = false }) {
   const [data, setData] = useState({ recent: [], upcoming: [], disabled: [] });
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("schedule");
+  const [selected, setSelected] = useState(null);
+  const [filter, setFilter] = useState("");
+  const [condFilter, setCondFilter] = useState("all"); // "all" | "cond" | "uncond"
 
   function load() {
     getRoutines()
@@ -136,8 +292,6 @@ export default function Routines({ embedded = false }) {
     load();
   }
 
-  const toggleView = () => setView(v => v === "schedule" ? "workspaces" : "schedule");
-
   if (loading) {
     if (embedded) return <div className="loading">loading...</div>;
     return (
@@ -151,90 +305,89 @@ export default function Routines({ embedded = false }) {
     );
   }
 
-  const viewToggle = (
-    <button
-      className="feed-mode-toggle"
-      onClick={toggleView}
-      aria-label={view === "schedule" ? "Group by workspace" : "Show schedule"}
-      title={view === "schedule" ? "Group by workspace" : "Show schedule"}
-    >
-      {view === "schedule" ? (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-          <rect x="3" y="3" width="7" height="7" rx="1" />
-          <rect x="14" y="3" width="7" height="7" rx="1" />
-          <rect x="3" y="14" width="7" height="7" rx="1" />
-          <rect x="14" y="14" width="7" height="7" rx="1" />
-        </svg>
-      ) : (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M3 10h18M16 2v4M8 2v4" />
-        </svg>
-      )}
-    </button>
-  );
+  function applyFilters(list) {
+    return list.filter((r) => {
+      if (!matchesFilter(r, filter)) return false;
+      if (condFilter === "cond" && !r.conditional) return false;
+      if (condFilter === "uncond" && r.conditional) return false;
+      return true;
+    });
+  }
+  const recent = applyFilters(data.recent);
+  const upcoming = applyFilters(data.upcoming);
+  const disabled = applyFilters(data.disabled);
 
   const routinesList = (
     <div className="routines-list">
-      {view === "schedule" ? (
-        <>
-          {data.recent.length > 0 && (
-            <section>
-              <h2 className="routines-section-label">recently fired</h2>
-              <div className="routine-cluster">
-                {data.recent.map((r) => (
-                  <RoutineRow key={r.id} routine={r} onFire={handleFire} />
-                ))}
-              </div>
-            </section>
-          )}
-          {data.upcoming.length > 0 && (
-            <section>
-              <h2 className="routines-section-label">upcoming</h2>
-              <div className="routine-cluster">
-                {data.upcoming.map((r) => (
-                  <RoutineRow key={r.id} routine={r} onFire={handleFire} />
-                ))}
-              </div>
-            </section>
-          )}
-          {data.disabled.length > 0 && (
-            <section>
-              <h2 className="routines-section-label">disabled</h2>
-              <div className="routine-cluster">
-                {data.disabled.map((r) => (
-                  <RoutineRow key={r.id} routine={r} onFire={handleFire} />
-                ))}
-              </div>
-            </section>
-          )}
-        </>
-      ) : (
-        groupByWorkspace(data).map(([wsName, { color, description, routines }]) => (
-          <section key={wsName}>
-            <h2 className="routines-section-label workspace-group-header">
-              <span className="workspace-dot" style={{ background: color }} />
-              {wsName}
-            </h2>
-            {description && (
-              <p className="workspace-group-description">{description}</p>
-            )}
-            <div className="routine-cluster">
-              {routines.map((r) => (
-                <RoutineRow key={r.id} routine={r} onFire={handleFire} />
-              ))}
-            </div>
-          </section>
-        ))
+      <div className="config-banner">
+        Routine config is managed by Fathom via <code>workspaces.json</code>
+      </div>
+      <div className="routines-filter-bar">
+        <input
+          className="routines-filter"
+          type="text"
+          placeholder="Filter routines..."
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+        <div className="routines-filter-chips">
+          <button
+            className={`routines-chip ${condFilter === "all" ? "active" : ""}`}
+            onClick={() => setCondFilter("all")}
+          >all</button>
+          <button
+            className={`routines-chip ${condFilter === "cond" ? "active" : ""}`}
+            onClick={() => setCondFilter("cond")}
+          >conditional</button>
+          <button
+            className={`routines-chip ${condFilter === "uncond" ? "active" : ""}`}
+            onClick={() => setCondFilter("uncond")}
+          >scheduled</button>
+        </div>
+      </div>
+      {recent.length > 0 && (
+        <section>
+          <h2 className="routines-section-label">recently fired</h2>
+          {recent.map((r) => (
+            <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
+          ))}
+        </section>
+      )}
+      {upcoming.length > 0 && (
+        <section>
+          <h2 className="routines-section-label">upcoming</h2>
+          {upcoming.map((r) => (
+            <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
+          ))}
+        </section>
+      )}
+      {disabled.length > 0 && (
+        <section>
+          <h2 className="routines-section-label">disabled</h2>
+          {disabled.map((r) => (
+            <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
+          ))}
+        </section>
+      )}
+      {(filter || condFilter !== "all") && recent.length === 0 && upcoming.length === 0 && disabled.length === 0 && (
+        <div className="empty-state">No matching routines</div>
       )}
     </div>
+  );
+
+  const panel = selected && (
+    <RoutineDetailPanel
+      routine={selected}
+      onClose={() => setSelected(null)}
+      onFire={handleFire}
+    />
   );
 
   if (embedded) {
     return (
       <div className="routines-embedded">
-        <div className="routines-embedded-header">{viewToggle}</div>
         {routinesList}
+        {panel}
       </div>
     );
   }
@@ -244,9 +397,9 @@ export default function Routines({ embedded = false }) {
       <header className="page-header">
         <h1>fathom</h1>
         <span className="header-subtitle">routines</span>
-        {viewToggle}
       </header>
       {routinesList}
+      {panel}
     </div>
   );
 }
