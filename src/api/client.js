@@ -129,6 +129,47 @@ export function sendReaction(workspace, reaction, item) {
   });
 }
 
+export function getVaultFiles(workspace, limit = 200) {
+  return request(`/api/vault/files?workspace=${encodeURIComponent(workspace)}&limit=${limit}`);
+}
+
+export function getVaultFile(filePath, workspace) {
+  return request(`/api/vault/file/${filePath}?workspace=${encodeURIComponent(workspace)}`);
+}
+
+export function searchVault(query, workspace) {
+  return request(`/api/vault/search?q=${encodeURIComponent(query)}&workspace=${encodeURIComponent(workspace)}`);
+}
+
+export function vaultRawUrl(filePath, workspace) {
+  const conn = getConnection();
+  if (!conn) return "";
+  return `${conn.serverUrl}/api/vault/raw/${filePath}?workspace=${encodeURIComponent(workspace)}&token=${conn.apiKey}`;
+}
+
+export function getSettings() {
+  return request("/api/settings");
+}
+
+export function updateSettings(body) {
+  return request("/api/settings", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function getPackages() {
+  return request("/api/packages");
+}
+
+export function installPackage(name) {
+  return request(`/api/packages/${encodeURIComponent(name)}/install`, { method: "POST" });
+}
+
+export function uninstallPackage(name) {
+  return request(`/api/packages/${encodeURIComponent(name)}/uninstall`, { method: "POST" });
+}
+
 export async function testConnection(serverUrl, apiKey) {
   const cleaned = serverUrl.replace(/\/+$/, "");
 

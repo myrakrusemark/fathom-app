@@ -2,11 +2,14 @@ import { useState } from "react";
 import Routines from "./Routines.jsx";
 import Workspaces from "./Workspaces.jsx";
 import Comms from "./Comms.jsx";
+import Vault from "./Vault.jsx";
+import TabBar from "./TabBar.jsx";
 
 const TABS = [
   { id: "routines", label: "Routines" },
   { id: "workspaces", label: "Workspaces" },
   { id: "comms", label: "Comms" },
+  { id: "vault", label: "Vault" },
 ];
 
 export default function Backstage() {
@@ -18,21 +21,12 @@ export default function Backstage() {
         <h1>fathom</h1>
         <span className="header-subtitle">backstage</span>
       </header>
-      <div className="backstage-tabs">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            className={`backstage-tab ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={TABS} active={activeTab} onChange={setActiveTab} />
       <div className="backstage-content">
         {activeTab === "routines" && <Routines embedded />}
         {activeTab === "workspaces" && <Workspaces />}
         {activeTab === "comms" && <Comms />}
+        {activeTab === "vault" && <Vault />}
       </div>
     </div>
   );

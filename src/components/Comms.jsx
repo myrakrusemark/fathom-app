@@ -32,7 +32,7 @@ function displayRoomName(name) {
 
 function roomType(name) {
   if (name.startsWith("dm:")) return "dm";
-  if (name.startsWith("mentions:")) return "room";
+  if (name.startsWith("mentions:")) return "mentions";
   if (name.startsWith("notif-")) return "thread";
   return "room";
 }
@@ -104,7 +104,7 @@ export default function Comms() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [typeFilter, setTypeFilter] = useState("all"); // "all" | "room" | "dm" | "thread"
+  const [typeFilter, setTypeFilter] = useState(new Set(["room", "dm", "thread"]));
   const [perspective, setPerspective] = useState("all");
 
   function loadRooms(ws) {
@@ -149,31 +149,46 @@ export default function Comms() {
     return <div className="empty-state">No rooms yet.</div>;
   }
 
+  const allTypes = ["mentions", "dm", "thread", "room"];
+  const isAll = allTypes.every((t) => typeFilter.has(t));
   const filtered = rooms.filter((r) => {
-    if (typeFilter === "all") return true;
-    return roomType(r.name) === typeFilter;
+    if (isAll) return true;
+    return typeFilter.has(roomType(r.name));
   });
 
-  const mentions = filtered.filter((r) => r.name.startsWith("mentions:"));
-  const rest = filtered.filter((r) => !r.name.startsWith("mentions:"));
-  const sorted = [
-    ...mentions.sort((a, b) => (b.last_activity || 0) - (a.last_activity || 0)),
-    ...rest.sort((a, b) => (b.last_activity || 0) - (a.last_activity || 0)),
-  ];
+  const sorted = [...filtered].sort((a, b) => (b.last_activity || 0) - (a.last_activity || 0));
 
   return (
     <div className="comms-list">
       <div className="comms-filter-bar">
         <div className="routines-filter-chips">
-          {["all", "room", "dm", "thread"].map((t) => (
-            <button
-              key={t}
-              className={`routines-chip ${typeFilter === t ? "active" : ""}`}
-              onClick={() => setTypeFilter(t)}
-            >
-              {t === "all" ? "all" : t === "room" ? "rooms" : t === "dm" ? "DMs" : "threads"}
-            </button>
-          ))}
+          {["all", "mentions", "room", "dm", "thread"].map((t) => {
+            const active = t === "all" ? isAll : typeFilter.has(t);
+            const label = t === "all" ? "all" : t === "mentions" ? "mentions" : t === "room" ? "rooms" : t === "dm" ? "DMs" : "threads";
+            return (
+              <button
+                key={t}
+                className={`routines-chip ${active ? "active" : ""}`}
+                onClick={() => {
+                  if (t === "all") {
+                    setTypeFilter(isAll ? new Set(["room", "dm", "thread"]) : new Set(allTypes));
+                  } else {
+                    setTypeFilter((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(t)) {
+                        if (next.size > 1) next.delete(t);
+                      } else {
+                        next.add(t);
+                      }
+                      return next;
+                    });
+                  }
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
         <select
           className="comms-perspective-select"
