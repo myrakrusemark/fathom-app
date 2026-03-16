@@ -3909,6 +3909,124 @@ body {
   font-size: 14px;
 }
 
+/* --- Feed Empty (Scout suggestions) --- */
+.feed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 20px 32px;
+  text-align: center;
+}
+.feed-empty-icon {
+  margin-bottom: 16px;
+}
+.feed-empty-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+.feed-empty-subtitle {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0 0 20px;
+}
+.feed-empty-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+  margin-bottom: 16px;
+}
+.feed-empty-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: left;
+  font-family: inherit;
+}
+.feed-empty-card:hover {
+  border-color: var(--accent);
+}
+.feed-empty-card:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.feed-empty-card.sent {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.06);
+}
+.feed-empty-card-emoji {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.feed-empty-card-text {
+  flex: 1;
+  min-width: 0;
+}
+.feed-empty-card-check {
+  color: #22c55e;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.feed-empty-input {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+}
+.feed-empty-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.feed-empty-input input:focus {
+  border-color: var(--accent);
+}
+.feed-empty-input input::placeholder {
+  color: var(--text-muted);
+}
+.feed-empty-send {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.feed-empty-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .loading {
   text-align: center;
   padding: 48px 16px;

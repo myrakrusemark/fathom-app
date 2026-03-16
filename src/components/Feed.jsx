@@ -3,6 +3,7 @@ import { getFeed, getWeather, listRooms, dismissFeedItem } from "../api/client.j
 import { getInterestEntries } from "../data/workspaces.js";
 import FeedItem from "./FeedItem.jsx";
 import FeedDetailPanel from "./FeedDetailPanel.jsx";
+import FeedEmpty from "./FeedEmpty.jsx";
 
 function WeatherIcon({ icon }) {
   if (icon === "cloud-sun") {
@@ -379,6 +380,7 @@ export default function Feed({
           )}
 
           <div className="feed">
+            {newItems.length === 0 && <FeedEmpty />}
             {stackByWorkspace(newItems).map((entry) =>
               entry.stacked ? (
                 <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} unreadThreads={unreadThreads}onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />

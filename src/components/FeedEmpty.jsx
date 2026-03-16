@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { readRoom, postToRoom } from "../api/client.js";
+import { getSuggestions, postToRoom } from "../api/client.js";
 
 function PlusCircle() {
   return (
     <svg viewBox="0 0 64 64" fill="none" width="48" height="48">
-      <circle cx="32" cy="32" r="30" stroke="var(--text-muted)" strokeWidth="2" strokeDasharray="4 3" opacity="0.5" />
-      <path d="M32 20v24M20 32h24" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="32" cy="32" r="30" stroke="var(--accent)" strokeWidth="2.5" strokeDasharray="4 3" />
+      <path d="M32 20v24M20 32h24" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" />
     </svg>
   );
 }
@@ -21,28 +21,14 @@ function SendIcon() {
 export default function FeedEmpty() {
   const [suggestions, setSuggestions] = useState([]);
   const [customText, setCustomText] = useState("");
-  const [sending, setSending] = useState(null); // id or "custom"
+  const [sending, setSending] = useState(null); // title or "custom"
   const [sent, setSent] = useState(null);
 
-  // Read suggestions from the suggestions room
   useEffect(() => {
-    readRoom("suggestions", 10080) // 7 days
+    getSuggestions()
       .then((data) => {
-        const msgs = data.messages || [];
-        // Find the latest message from scout that contains JSON
-        for (let i = msgs.length - 1; i >= 0; i--) {
-          const msg = msgs[i];
-          if (msg.sender === "scout") {
-            try {
-              const parsed = JSON.parse(msg.message);
-              if (Array.isArray(parsed)) {
-                setSuggestions(parsed);
-                return;
-              }
-            } catch {
-              // not JSON, skip
-            }
-          }
+        if (Array.isArray(data.suggestions)) {
+          setSuggestions(data.suggestions);
         }
       })
       .catch(() => {});
@@ -100,7 +86,7 @@ export default function FeedEmpty() {
             >
               {s.emoji && <span className="feed-empty-card-emoji">{s.emoji}</span>}
               <span className="feed-empty-card-text">{s.title}</span>
-              {sent === s.title && <span className="feed-empty-card-check">✓</span>}
+              {sent === s.title && <span className="feed-empty-card-check">&#10003;</span>}
             </button>
           ))}
         </div>
@@ -119,7 +105,7 @@ export default function FeedEmpty() {
           className="feed-empty-send"
           disabled={!customText.trim() || sending !== null}
         >
-          {sent === "custom" ? "✓" : <SendIcon />}
+          {sent === "custom" ? "\u2713" : <SendIcon />}
         </button>
       </form>
     </div>

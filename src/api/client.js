@@ -129,6 +129,10 @@ export function sendReaction(workspace, reaction, item) {
   });
 }
 
+export function getSuggestions() {
+  return request("/api/suggestions");
+}
+
 export function getVaultFiles(workspace, limit = 200) {
   return request(`/api/vault/files?workspace=${encodeURIComponent(workspace)}&limit=${limit}`);
 }
