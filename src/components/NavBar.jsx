@@ -109,12 +109,11 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unre
           </svg>
         )}
       </button>
-      <NavLink to="/routines" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+      <NavLink to="/backstage" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 6v6l4 2" />
+          <path d="M4 4c2 3 2 13 0 16M20 4c-2 3-2 13 0 16M8 3c1 4 1 14 0 18M16 3c-1 4-1 14 0 18M4 4h16M4 20h16" />
         </svg>
-        <span>Routines</span>
+        <span>Backstage</span>
       </NavLink>
       <button className="nav-settings-btn" onClick={onSettingsOpen} aria-label="Settings">
         <span className={`connection-dot ${isConnected() ? "connected" : "disconnected"}`} />

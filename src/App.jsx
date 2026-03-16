@@ -1,8 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { isConnected } from "./lib/connection.js";
 import Feed from "./components/Feed.jsx";
+import { ATMOSPHERES } from "./data/atmospheres.js";
 import Routines from "./components/Routines.jsx";
+import Backstage from "./components/Backstage.jsx";
 import ChatSheet from "./components/ChatSheet.jsx";
 import NavBar from "./components/NavBar.jsx";
 import Onboarding from "./components/Onboarding.jsx";
@@ -19,6 +21,22 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [connected, setConnected] = useState(isConnected());
   const [unreadCount, setUnreadCount] = useState(0);
+  const [atmosphere, setAtmosphere] = useState(0);
+
+  // Apply atmosphere to body globally
+  useEffect(() => {
+    const a = ATMOSPHERES[atmosphere];
+    document.body.style.background = a.bg;
+    document.body.style.backgroundAttachment = "fixed";
+    document.body.style.color = a.text || "";
+    document.documentElement.style.setProperty("--text", a.text || "#1a1a2e");
+    return () => {
+      document.body.style.background = "";
+      document.body.style.backgroundAttachment = "";
+      document.body.style.color = "";
+      document.documentElement.style.setProperty("--text", "#1a1a2e");
+    };
+  }, [atmosphere]);
 
   const handleConnectionChange = useCallback(() => {
     setConnected(isConnected());
@@ -87,8 +105,11 @@ export default function App() {
               userName={userName}
               selectedInterests={selectedInterests}
               unreadCount={unreadCount}
+              atmosphere={atmosphere}
+              onAtmosphereChange={setAtmosphere}
             />
           } />
+          <Route path="/backstage" element={<Backstage />} />
           <Route path="/routines" element={<Routines />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -26,10 +26,9 @@
 
 html, body {
   background:
-    radial-gradient(ellipse at 20% 0%, rgba(180, 190, 220, 0.4) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(200, 195, 225, 0.35) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(210, 205, 220, 0.3) 0%, transparent 50%),
-    linear-gradient(180deg, #d5d9e5 0%, #e2e3ed 25%, #ecedf4 50%, #e9e5f0 75%, #e4e1ec 100%);
+    radial-gradient(ellipse at 30% 10%, rgba(180,210,240,0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 30%, rgba(190,215,240,0.3) 0%, transparent 50%),
+    linear-gradient(180deg, #c4d7ea 0%, #d0dfed 25%, #dce7f0 50%, #e3eaf1 75%, #e0e6ee 100%);
   background-attachment: fixed;
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -385,6 +384,8 @@ body {
 .feed-item-body li { margin-bottom: 2px; }
 .feed-item-body code { background: rgba(255,255,255,0.06); padding: 1px 4px; border-radius: 3px; font-size: 12px; }
 .feed-item-body blockquote { margin: 6px 0; padding: 4px 10px; border-left: 3px solid var(--accent); opacity: 0.85; }
+.feed-item-body img { max-width: 100%; border-radius: 8px; object-fit: cover; }
+.feed-item-body > div { font-family: system-ui, -apple-system, sans-serif; }
 
 .feed-item-images {
   display: flex;
@@ -1883,11 +1884,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 500;
-  background:
-    radial-gradient(ellipse at 20% 0%, rgba(180, 190, 220, 0.4) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(200, 195, 225, 0.35) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(210, 205, 220, 0.3) 0%, transparent 50%),
-    linear-gradient(180deg, #d5d9e5 0%, #e2e3ed 25%, #ecedf4 50%, #e9e5f0 75%, #e4e1ec 100%);
+  background: transparent;
 }
 
 /* Crossfade: onboarding fades out, revealing app underneath */
@@ -2163,11 +2160,7 @@ body {
 }
 
 .settings-backdrop.gate {
-  background:
-    radial-gradient(ellipse at 20% 0%, rgba(180, 190, 220, 0.4) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(200, 195, 225, 0.35) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(210, 205, 220, 0.3) 0%, transparent 50%),
-    linear-gradient(180deg, #d5d9e5 0%, #e2e3ed 25%, #ecedf4 50%, #e9e5f0 75%, #e4e1ec 100%);
+  background: transparent;
 }
 
 .settings-modal {
@@ -2569,6 +2562,7 @@ body {
 .feed-panel-body code { background: rgba(0,0,0,0.04); padding: 1px 5px; border-radius: 3px; font-size: 13px; }
 .feed-panel-body blockquote { margin: 8px 0; padding: 6px 12px; border-left: 3px solid var(--accent); opacity: 0.85; }
 .feed-panel-body img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+.feed-panel-body > div { font-family: system-ui, -apple-system, sans-serif; }
 
 .feed-panel-actions {
   display: flex;
@@ -2939,6 +2933,7 @@ body {
   .feed .feed-item {
     overflow: hidden;
     min-height: 0;
+    max-height: 320px;
   }
 
   .feed .feed-item .feed-item-body:not(.expanded) {
@@ -2950,6 +2945,7 @@ body {
     grid-column: span 2;
     grid-row: span 2;
     padding: 20px 22px;
+    max-height: 660px;
   }
 
   .feed-item.layout-hero .feed-item-title {
@@ -2983,6 +2979,7 @@ body {
   /* Compact: tight, minimal */
   .feed-item.layout-compact {
     padding: 10px 12px;
+    max-height: 180px;
   }
 
   .feed-item.layout-compact .feed-item-title {
@@ -3103,4 +3100,252 @@ body {
 /* --- Earlier items muted --- */
 .feed-earlier-items .feed-item {
   opacity: 0.65;
+}
+
+/* --- Backstage --- */
+.backstage-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.backstage-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.backstage-tab.active {
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow-card);
+}
+
+.backstage-content {
+  flex: 1;
+  min-height: 0;
+}
+
+.routines-embedded {
+  display: flex;
+  flex-direction: column;
+}
+
+.routines-embedded-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 0 8px;
+}
+
+/* --- Workspaces --- */
+.workspaces-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workspace-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.workspace-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.workspace-card-name {
+  font-weight: 600;
+  font-size: 15px;
+  flex: 1;
+}
+
+.workspace-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.workspace-status.running {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.workspace-status.stopped {
+  background: rgba(156, 163, 175, 0.15);
+  color: var(--text-muted);
+}
+
+.workspace-card-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* --- Comms --- */
+.comms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.room-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: transform 0.1s ease;
+}
+
+.room-row:active {
+  transform: scale(0.98);
+}
+
+.room-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.room-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-row-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.room-badge {
+  background: var(--accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+.room-ago {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* --- Room View --- */
+.room-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.room-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.room-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.room-message {
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+.room-msg-sender {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.room-msg-text {
+  font-size: 14px;
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.room-msg-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 4px;
+}
+
+/* --- Shared --- */
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.loading {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-muted);
+  font-size: 14px;
 }

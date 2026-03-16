@@ -89,6 +89,10 @@ export function getWorkspaces() {
   return request("/api/workspaces");
 }
 
+export function getWorkspaceProfiles() {
+  return request("/api/workspaces/profiles");
+}
+
 export function getWeather() {
   return request("/api/weather");
 }
