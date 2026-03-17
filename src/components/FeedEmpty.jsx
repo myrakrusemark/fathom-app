@@ -42,6 +42,8 @@ export default function FeedEmpty() {
         }
       })
       .catch(() => {});
+    // Feed is empty — fire Scout to curate fresh suggestions
+    fireRoutine(SCOUT_ROUTINE_ID).catch(() => {});
   }, []);
 
   function sendToScout(message) {
