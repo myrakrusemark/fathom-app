@@ -174,6 +174,40 @@ export function uninstallPackage(name) {
   return request(`/api/packages/${encodeURIComponent(name)}/uninstall`, { method: "POST" });
 }
 
+export function saveClaudeCredentials(key, type) {
+  return request("/api/packages/claude/credentials", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key, type }),
+  });
+}
+
+export function deleteClaudeCredentials() {
+  return request("/api/packages/claude/credentials", { method: "DELETE" });
+}
+
+export function submitOnboarding(name, interests) {
+  const conn = getConnection();
+  if (!conn) throw new Error("Not connected");
+  return fetch(`${conn.serverUrl}/api/onboarding`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, interests: [...interests] }),
+  }).then((r) => {
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return r.json();
+  });
+}
+
+export function getOnboardingStatus() {
+  const conn = getConnection();
+  if (!conn) throw new Error("Not connected");
+  return fetch(`${conn.serverUrl}/api/onboarding/status`).then((r) => {
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return r.json();
+  });
+}
+
 export async function testConnection(serverUrl, apiKey) {
   const cleaned = serverUrl.replace(/\/+$/, "");
 
