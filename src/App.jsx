@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { isConnected } from "./lib/connection.js";
+import { isConnected, detectSameOrigin, saveConnection } from "./lib/connection.js";
 import { getOnboardingStatus, submitOnboarding } from "./api/client.js";
 import Feed from "./components/Feed.jsx";
 import { ATMOSPHERES } from "./data/atmospheres.js";
@@ -10,6 +10,7 @@ import ChatSheet from "./components/ChatSheet.jsx";
 import NavBar from "./components/NavBar.jsx";
 import Onboarding from "./components/Onboarding.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
+import SetupPackages from "./components/SetupPackages.jsx";
 
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
@@ -24,19 +25,62 @@ export default function App() {
   const [atmosphere, setAtmosphere] = useState(0);
   const [showBackstage, setShowBackstage] = useState(() => localStorage.getItem('fathom-show-backstage') === 'true');
 
+  // Setup phase: "loading" | "packages" | "onboarding" | "done"
+  const [setupPhase, setSetupPhase] = useState("loading");
+
   // Persist backstage toggle
   useEffect(() => {
     localStorage.setItem('fathom-show-backstage', showBackstage);
   }, [showBackstage]);
 
-  // Auto-trigger onboarding on mount if connected to a fresh instance
+  // On mount: try same-origin auto-connect, then check onboarding status
   useEffect(() => {
-    if (!connected) return;
-    getOnboardingStatus()
-      .then((status) => {
-        if (!status.complete) setShowOnboarding(true);
-      })
-      .catch(() => {});
+    async function init() {
+      let nowConnected = isConnected();
+
+      // Try same-origin auto-connect if not already connected
+      if (!nowConnected) {
+        const origin = await detectSameOrigin();
+        if (origin) {
+          try {
+            const res = await fetch(`${origin}/api/onboarding/status`);
+            if (res.ok) {
+              const status = await res.json();
+              if (!status.complete && status.api_key) {
+                // Fresh server, auto-connect using exposed key
+                saveConnection({ serverUrl: origin, apiKey: status.api_key });
+                nowConnected = true;
+                setConnected(true);
+              }
+              // If complete, auth is enabled — user must enter key manually
+            }
+          } catch {
+            // Can't reach onboarding endpoint — fall through to gate
+          }
+        }
+      }
+
+      if (!nowConnected) {
+        setSetupPhase("done"); // Will show connection gate via !connected check
+        return;
+      }
+
+      // Connected — check what setup step we're at
+      try {
+        const status = await getOnboardingStatus();
+        if (!status.complete && !status.packages_ready) {
+          setSetupPhase("packages");
+        } else if (!status.complete) {
+          setSetupPhase("onboarding");
+          setShowOnboarding(true);
+        } else {
+          setSetupPhase("done");
+        }
+      } catch {
+        setSetupPhase("done");
+      }
+    }
+    init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply atmosphere to body globally
@@ -57,16 +101,25 @@ export default function App() {
   const handleConnectionChange = useCallback(() => {
     const nowConnected = isConnected();
     setConnected(nowConnected);
-    // Reset onboarding state — we might be pointing at a different server
+    // Reset state — we might be pointing at a different server
     setShowOnboarding(false);
     setCompleting(false);
-    // Check if the new server needs onboarding
+    // Check setup phase for the new server
     if (nowConnected) {
       getOnboardingStatus()
         .then((status) => {
-          if (!status.complete) setShowOnboarding(true);
+          if (!status.complete && !status.packages_ready) {
+            setSetupPhase("packages");
+          } else if (!status.complete) {
+            setSetupPhase("onboarding");
+            setShowOnboarding(true);
+          } else {
+            setSetupPhase("done");
+          }
         })
-        .catch(() => {});
+        .catch(() => setSetupPhase("done"));
+    } else {
+      setSetupPhase("done");
     }
   }, []);
 
@@ -105,6 +158,23 @@ export default function App() {
         onClose={() => {}}
         onConnectionChange={handleConnectionChange}
         isGate={true}
+      />
+    );
+  }
+
+  // Loading state
+  if (setupPhase === "loading") {
+    return null;
+  }
+
+  // Packages setup step
+  if (setupPhase === "packages") {
+    return (
+      <SetupPackages
+        onComplete={() => {
+          setSetupPhase("onboarding");
+          setShowOnboarding(true);
+        }}
       />
     );
   }

@@ -44,3 +44,17 @@ export function isConnected() {
   const conn = getConnection();
   return !!(conn && conn.serverUrl && conn.apiKey);
 }
+
+/**
+ * Detect if the app is served from the same origin as the fathom-vault server.
+ * Returns the origin string if same-origin, or null if remote/unreachable.
+ */
+export async function detectSameOrigin() {
+  try {
+    const res = await fetch("/api/version", { signal: AbortSignal.timeout(3000) });
+    if (res.ok) return window.location.origin;
+  } catch {
+    // Not same-origin or server unreachable
+  }
+  return null;
+}
