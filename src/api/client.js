@@ -47,18 +47,18 @@ export function getChat() {
   return request("/api/chat");
 }
 
-export function sendMessage(text) {
-  const ws = getWorkspace();
+export function sendMessage(text, workspace = null) {
+  const ws = workspace || getWorkspace();
   return request(`/api/conversation/${ws}/send`, {
     method: "POST",
     body: JSON.stringify({ message: text }),
   });
 }
 
-export function uploadAttachment(file, message = "") {
+export function uploadAttachment(file, message = "", workspace = null) {
   const conn = getConnection();
   if (!conn) throw new Error("Not connected");
-  const ws = getWorkspace();
+  const ws = workspace || getWorkspace();
   const form = new FormData();
   form.append("file", file);
   if (message) form.append("message", message);
@@ -72,8 +72,8 @@ export function uploadAttachment(file, message = "") {
   });
 }
 
-export function sendVoice(text, duration = 0) {
-  const ws = getWorkspace();
+export function sendVoice(text, duration = 0, workspace = null) {
+  const ws = workspace || getWorkspace();
   return request("/api/voice/send", {
     method: "POST",
     body: JSON.stringify({ text, workspace: ws, duration }),

@@ -27,13 +27,14 @@ function timeAgo(timestamp) {
   return `${days}d ago`;
 }
 
-function WorkspaceCard({ name, workspace, onSelect }) {
+function WorkspaceCard({ name, workspace, onSelect, onOpenChat }) {
   if (workspace.type === "human") return null;
 
   const wsColor = workspace.color || "#888";
   const displayName = workspace.display_name || name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   const description = workspace.description || "";
   const { color: statusColor, label: statusLabel, pulse } = getProfileStatus(workspace);
+  const hasAgent = workspace.agents && workspace.agents.length > 0;
 
   return (
     <div className="workspace-card" onClick={() => onSelect(name, workspace)}>
@@ -46,9 +47,22 @@ function WorkspaceCard({ name, workspace, onSelect }) {
           </span>
           <span className="workspace-card-slug">{name}</span>
         </div>
-        <div className="workspace-status-indicator">
-          <span className={`workspace-status-dot${pulse ? " pulse" : ""}`} style={{ background: statusColor }} />
-          <span className="workspace-status-label">{statusLabel}</span>
+        <div className="workspace-card-actions">
+          {hasAgent && onOpenChat && (
+            <button
+              className="workspace-chat-btn"
+              onClick={(e) => { e.stopPropagation(); onOpenChat(name); }}
+              aria-label={`Chat with ${displayName}`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+              </svg>
+            </button>
+          )}
+          <div className="workspace-status-indicator">
+            <span className={`workspace-status-dot${pulse ? " pulse" : ""}`} style={{ background: statusColor }} />
+            <span className="workspace-status-label">{statusLabel}</span>
+          </div>
         </div>
       </div>
       {description && <p className="workspace-card-desc">{description}</p>}
@@ -189,7 +203,7 @@ function WorkspaceDetailPanel({ name, workspace, onClose }) {
   );
 }
 
-export default function Workspaces() {
+export default function Workspaces({ onOpenChat }) {
   const [workspaces, setWorkspaces] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -225,6 +239,7 @@ export default function Workspaces() {
           name={name}
           workspace={ws}
           onSelect={(n, w) => setSelected({ name: n, workspace: w })}
+          onOpenChat={onOpenChat}
         />
       ))}
       {selected && (

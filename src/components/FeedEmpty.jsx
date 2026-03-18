@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { getSuggestions, postToRoom, fireRoutine } from "../api/client.js";
+import { getSuggestions, postToRoom } from "../api/client.js";
 
-const SCOUT_ROUTINE_ID = "d096aff5";
+const SCOUT_CURATE_ROUTINE_ID = "scout-curate";
 
 function PlusCircle() {
   return (
@@ -42,17 +42,12 @@ export default function FeedEmpty() {
         }
       })
       .catch(() => {});
-    // Feed is empty — fire Scout to curate fresh suggestions
-    fireRoutine(SCOUT_ROUTINE_ID).catch(() => {});
   }, []);
 
   function sendToScout(message) {
     setPhase("sending");
-    // Post DM so Scout has the request, then fire Scout's routine
-    Promise.all([
-      postToRoom("dm:myra+scout", message, "myra"),
-      fireRoutine(SCOUT_ROUTINE_ID),
-    ])
+    // Post DM so Scout has the request (Scout is already running from useEffect fire)
+    postToRoom("dm:myra+scout", message, "myra")
       .then(() => setPhase("confirmed"))
       .catch(() => setPhase("confirmed")); // show confirmation even on error
   }
@@ -109,7 +104,7 @@ export default function FeedEmpty() {
       </div>
       <h2 className="feed-empty-title">All caught up</h2>
       <p className="feed-empty-subtitle">
-        Scout found some things worth starting
+        I found some things worth starting
       </p>
 
       {suggestions.length > 0 && (

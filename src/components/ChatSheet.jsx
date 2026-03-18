@@ -273,7 +273,7 @@ function attachMemoryCounts(msgs) {
   return msgs.filter((m) => m.type !== "memory-count");
 }
 
-export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, feedMode, onUnread }) {
+export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, onUnread, workspace = null }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -288,6 +288,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
   const wsRef = useRef(null);
   const openRef = useRef(open);
   openRef.current = open;
+  const activeWorkspace = workspace || getWorkspace();
 
   useEffect(() => {
     if (!pendingFile) {
@@ -302,10 +303,8 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
     setPendingPreview(null);
   }, [pendingFile]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const connectWs = useCallback(() => {
-    const ws = getWorkspace();
-    const url = getWsUrl(`/ws/conversation/${ws}`);
+    const url = getWsUrl(`/ws/conversation/${activeWorkspace}`);
     if (!url) return;
 
     const socket = new WebSocket(url);
@@ -416,7 +415,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
     socket.onerror = () => {
       setWsConnected(false);
     };
-  }, []);
+  }, [activeWorkspace]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const disconnectWs = useCallback(() => {
     if (wsRef.current) {
@@ -428,16 +427,14 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
 
   useEffect(() => {
     if (open) {
-      if (feedMode === "fresh") {
-        setMessages(FRESH_CHAT_MESSAGES);
-      } else {
-        connectWs();
-      }
+      setMessages([]);
+      setIsProcessing(false);
+      connectWs();
     } else {
       disconnectWs();
     }
     return () => disconnectWs();
-  }, [open, feedMode, connectWs, disconnectWs]);
+  }, [open, activeWorkspace, connectWs, disconnectWs]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -489,9 +486,9 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
 
     try {
       if (file) {
-        await uploadAttachment(file, text);
+        await uploadAttachment(file, text, workspace);
       } else {
-        await sendMessage(text);
+        await sendMessage(text, workspace);
       }
     } catch (err) {
       const errMsg = {
@@ -527,8 +524,8 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, f
         </div>
         <div className="chat-sheet-header">
           <span className="chat-sheet-title">
-            fathom
-            {open && !feedMode.startsWith("fresh") && (
+            {activeWorkspace}
+            {open && (
               <span className={`connection-dot inline ${wsConnected ? "connected" : "disconnected"}`} />
             )}
           </span>

@@ -12,7 +12,7 @@ const TABS = [
   { id: "vault", label: "Vault" },
 ];
 
-export default function Backstage() {
+export default function Backstage({ onOpenChat }) {
   const [activeTab, setActiveTab] = useState("routines");
 
   return (
@@ -24,7 +24,7 @@ export default function Backstage() {
       <TabBar tabs={TABS} active={activeTab} onChange={setActiveTab} />
       <div className="backstage-content">
         {activeTab === "routines" && <Routines embedded />}
-        {activeTab === "workspaces" && <Workspaces />}
+        {activeTab === "workspaces" && <Workspaces onOpenChat={onOpenChat} />}
         {activeTab === "comms" && <Comms />}
         {activeTab === "vault" && <Vault />}
       </div>

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getFeed, getWeather, listRooms, dismissFeedItem } from "../api/client.js";
-import { getInterestEntries } from "../data/workspaces.js";
+import { getFeed, getWeather, listRooms, dismissFeedItem, fireRoutine } from "../api/client.js";
 import FeedItem from "./FeedItem.jsx";
 import FeedDetailPanel from "./FeedDetailPanel.jsx";
 import FeedEmpty from "./FeedEmpty.jsx";
@@ -53,98 +52,33 @@ function stackByWorkspace(items) {
   return result;
 }
 
-// --- Fresh feed sub-components ---
-
-function WelcomeBubble({ userName, visible }) {
-  if (!visible) return null;
-  return (
-    <div className="feed-item onboard-fade-in">
-      <div className="feed-item-header">
-        <span className="feed-item-dot" style={{ color: "#6366f1", background: "#6366f1" }} />
-        <span className="feed-item-workspace">fathom</span>
-        <span className="feed-item-time">just now</span>
-      </div>
-      <div className="feed-item-body" style={{ WebkitLineClamp: "unset", overflow: "visible" }}>
-        Hey {userName}! Welcome to your feed. Updates from your workspaces and
-        routines show up here. Here's what I set up for you...
-      </div>
-    </div>
-  );
-}
-
-function SetupCard({ entry, isWorkspace }) {
-  return (
-    <div className="feed-setup-card">
-      <span className="feed-setup-dot" style={{ background: entry.color }} />
-      <span className="feed-setup-text">
-        {isWorkspace ? "Workspace created" : "Routine added"}:{" "}
-        <strong>{entry.displayName}</strong>
-      </span>
-    </div>
-  );
-}
-
-function FreshFeedItem({ entry }) {
-  const workspace = entry.createsWorkspace
-    ? entry.workspaceId
-    : "fathom";
-  return (
-    <div className="feed-item feed-fresh-item">
-      <div className="feed-item-header">
-        <span className="feed-item-dot" style={{ color: entry.color, background: entry.color }} />
-        <span className="feed-item-workspace">{workspace}</span>
-        <span className="feed-item-time">just now</span>
-      </div>
-      <div className="feed-item-body">{entry.welcomeMessage}</div>
-    </div>
-  );
-}
-
-// --- Toggle icon components ---
-
-function SeedlingIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-      <path d="M12 22V10" />
-      <path d="M6 14c0-3.31 2.69-6 6-6 3.31 0 6 2.69 6 6" />
-      <path d="M12 10c0-4 3-7 7-7-4 0-7 3-7 7z" />
-      <path d="M12 10c0-4-3-7-7-7 4 0 7 3 7 7z" />
-    </svg>
-  );
-}
-
-function ListIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-    </svg>
-  );
-}
-
 // --- Main Feed ---
 
 export default function Feed({
   onChatOpen,
   onStartTour,
-  feedMode = "lived",
-  onToggleMode,
-  userName,
-  selectedInterests,
   unreadCount = 0,
 }) {
-  // Lived mode state
   const [allItems, setAllItems] = useState([]);
   const [earlierOpen, setEarlierOpen] = useState(false);
   const [weather, setWeather] = useState(null);
-  const [loading, setLoading] = useState(feedMode !== "fresh");
+  const [loading, setLoading] = useState(true);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [unreadThreads, setUnreadThreads] = useState(new Set());
 
   const handleDismiss = useCallback((itemId) => {
     // Optimistically mark as dismissed in local state
-    setAllItems((prev) => prev.map((item) =>
-      item.id === itemId ? { ...item, dismissed: true } : item
-    ));
+    setAllItems((prev) => {
+      const updated = prev.map((item) =>
+        item.id === itemId ? { ...item, dismissed: true } : item
+      );
+      // Fire Scout when the last undismissed card is swiped
+      const remaining = updated.filter((item) => !item.dismissed);
+      if (remaining.length === 0) {
+        fireRoutine("scout-curate").catch(() => {});
+      }
+      return updated;
+    });
     if (selectedItemId === itemId) setSelectedItemId(null);
     // Persist to server
     dismissFeedItem(itemId).catch(console.error);
@@ -170,20 +104,13 @@ export default function Feed({
     [allItems, selectedItemId]
   );
 
-  // Fresh mode animation phases: empty → welcome → setup → messages
-  const [freshPhase, setFreshPhase] = useState("empty");
-
-  // Build interest entries from selected interests
-  const selectedEntries = getInterestEntries(selectedInterests);
-
   // Always fetch weather
   useEffect(() => {
     getWeather().then(setWeather).catch(() => {});
   }, []);
 
-  // Fetch feed data when in lived mode, poll every 30s
+  // Fetch feed data, poll every 30s
   useEffect(() => {
-    if (feedMode === "fresh") return;
     let cancelled = false;
     let first = true;
     function fetchFeed() {
@@ -200,11 +127,10 @@ export default function Feed({
     fetchFeed();
     const interval = setInterval(fetchFeed, 30_000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [feedMode]);
+  }, []);
 
   // Poll room list for unread thread indicators
   useEffect(() => {
-    if (feedMode === "fresh") return;
     let cancelled = false;
     function fetchRooms() {
       listRooms("myra")
@@ -228,46 +154,9 @@ export default function Feed({
     fetchRooms();
     const interval = setInterval(fetchRooms, 30_000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [feedMode]);
+  }, []);
 
-  // Fresh mode: how many welcome messages have been revealed
-  const [revealedMessages, setRevealedMessages] = useState(0);
-
-  // Staged animation for fresh mode
-  useEffect(() => {
-    if (feedMode !== "fresh") return;
-    setFreshPhase("empty"); // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset on mode entry
-    // 1s pause, then fathom's welcome notification
-    const t1 = setTimeout(() => setFreshPhase("welcome"), 1000);
-    // 5s to read it, then setup cards
-    const t2 = setTimeout(() => setFreshPhase("setup"), 6000);
-    // 1s after setup cards, start staggering welcome messages
-    const t3 = setTimeout(() => setFreshPhase("messages"), 7000);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, [feedMode]);
-
-  // Stagger individual welcome messages 2s apart, then show banner
-  useEffect(() => {
-    if (freshPhase !== "messages") return;
-    // All messages revealed (or none to show) — wait 2s, show banner
-    if (revealedMessages >= selectedEntries.length) {
-      const t = setTimeout(() => setFreshPhase("banner"), 2000);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(
-      () => setRevealedMessages((n) => n + 1),
-      revealedMessages === 0 ? 0 : 2000
-    );
-    return () => clearTimeout(t);
-  }, [freshPhase, revealedMessages, selectedEntries.length]);
-
-  const isFresh = feedMode === "fresh";
-
-  if (loading && !isFresh) {
+  if (loading) {
     return (
       <div className="page">
         <header className="page-header">
@@ -282,24 +171,12 @@ export default function Feed({
     <div className="page">
       <header className="page-header">
         <h1>fathom</h1>
-        <span className="header-subtitle">
-          {isFresh ? "getting started" : "updates"}
-        </span>
+        <span className="header-subtitle">updates</span>
         {weather && (
           <div className="weather-pill">
             <WeatherIcon icon={weather.icon} />
             <span className="weather-temp">{weather.temp}°</span>
           </div>
-        )}
-        {onToggleMode && (
-          <button
-            className="feed-mode-toggle"
-            onClick={onToggleMode}
-            aria-label={isFresh ? "Show lived feed" : "Show first-landing feed"}
-            title={isFresh ? "Switch to lived view" : "Switch to fresh view"}
-          >
-            {isFresh ? <ListIcon /> : <SeedlingIcon />}
-          </button>
         )}
         <button className="tour-replay-btn" onClick={onStartTour} aria-label="Tour">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -309,44 +186,7 @@ export default function Feed({
         </button>
       </header>
 
-      {isFresh ? (
-        <>
-          {freshPhase === "banner" && (
-            <div className="feed-unread-banner onboard-fade-in" onClick={onChatOpen}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <span>1 new message from fathom</span>
-            </div>
-          )}
-
-          <div className="feed">
-            <WelcomeBubble
-              userName={userName || "there"}
-              visible={freshPhase !== "empty"}
-            />
-
-            {["setup", "messages", "banner"].includes(freshPhase) &&
-              selectedEntries.length > 0 && (
-                <div className="feed-setup-group onboard-fade-in">
-                  {selectedEntries.map((entry) => (
-                    <SetupCard
-                      key={entry.id}
-                      entry={entry}
-                      isWorkspace={entry.createsWorkspace}
-                    />
-                  ))}
-                </div>
-              )}
-
-            {["messages", "banner"].includes(freshPhase) &&
-              selectedEntries.slice(0, revealedMessages).map((entry) => (
-                <FreshFeedItem key={entry.id} entry={entry} />
-              ))}
-          </div>
-        </>
-      ) : (
-        <>
+      <>
           {unreadCount > 0 && (
             <div className="feed-unread-banner" onClick={onChatOpen}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -406,7 +246,6 @@ export default function Feed({
             </div>
           )}
         </>
-      )}
     </div>
   );
 }

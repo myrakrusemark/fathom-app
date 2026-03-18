@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { isConnected } from "./lib/connection.js";
+import { getOnboardingStatus, submitOnboarding } from "./api/client.js";
 import Feed from "./components/Feed.jsx";
 import { ATMOSPHERES } from "./data/atmospheres.js";
 import Routines from "./components/Routines.jsx";
@@ -12,16 +13,25 @@ import SettingsModal from "./components/SettingsModal.jsx";
 
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatWorkspace, setChatWorkspace] = useState(null);
   const [pendingVoice, setPendingVoice] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [completing, setCompleting] = useState(false);
-  const [feedMode, setFeedMode] = useState("lived");
-  const [selectedInterests, setSelectedInterests] = useState(new Set());
-  const [userName, setUserName] = useState("");
+  const [feedKey, setFeedKey] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [connected, setConnected] = useState(isConnected());
   const [unreadCount, setUnreadCount] = useState(0);
   const [atmosphere, setAtmosphere] = useState(0);
+
+  // Auto-trigger onboarding on mount if connected to a fresh instance
+  useEffect(() => {
+    if (!connected) return;
+    getOnboardingStatus()
+      .then((status) => {
+        if (!status.complete) setShowOnboarding(true);
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply atmosphere to body globally
   useEffect(() => {
@@ -39,7 +49,19 @@ export default function App() {
   }, [atmosphere]);
 
   const handleConnectionChange = useCallback(() => {
-    setConnected(isConnected());
+    const nowConnected = isConnected();
+    setConnected(nowConnected);
+    // Reset onboarding state — we might be pointing at a different server
+    setShowOnboarding(false);
+    setCompleting(false);
+    // Check if the new server needs onboarding
+    if (nowConnected) {
+      getOnboardingStatus()
+        .then((status) => {
+          if (!status.complete) setShowOnboarding(true);
+        })
+        .catch(() => {});
+    }
   }, []);
 
   function handleVoiceResult(text) {
@@ -55,9 +77,10 @@ export default function App() {
   }
 
   function handleOnboardComplete(name, interests) {
-    setUserName(name);
-    setSelectedInterests(interests || new Set());
-    setFeedMode("fresh");
+    // Submit to server — creates workspaces/routines and posts welcome to feed
+    submitOnboarding(name, interests)
+      .then(() => setTimeout(() => setFeedKey((k) => k + 1), 2000))
+      .catch(() => {});
     setCompleting(true);
   }
 
@@ -66,10 +89,6 @@ export default function App() {
       setShowOnboarding(false);
       setCompleting(false);
     }
-  }
-
-  function handleToggleMode() {
-    setFeedMode((m) => (m === "fresh" ? "lived" : "fresh"));
   }
 
   // Gate: show settings as full-screen setup if not connected
@@ -98,21 +117,20 @@ export default function App() {
         <Routes>
           <Route path="/" element={
             <Feed
-              onChatOpen={() => { setUnreadCount(0); setChatOpen(true); }}
+              key={feedKey}
+              onChatOpen={() => { setChatWorkspace(null); setUnreadCount(0); setChatOpen(true); }}
               onStartTour={() => setShowOnboarding(true)}
-              feedMode={feedMode}
-              onToggleMode={handleToggleMode}
-              userName={userName}
-              selectedInterests={selectedInterests}
               unreadCount={unreadCount}
             />
           } />
-          <Route path="/backstage" element={<Backstage />} />
+          <Route path="/backstage" element={
+            <Backstage onOpenChat={(ws) => { setChatWorkspace(ws); setUnreadCount(0); setChatOpen(true); }} />
+          } />
           <Route path="/routines" element={<Routines />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <NavBar
-          onChatOpen={() => { setUnreadCount(0); setChatOpen(true); }}
+          onChatOpen={() => { setChatWorkspace(null); setUnreadCount(0); setChatOpen(true); }}
           onVoiceResult={handleVoiceResult}
           onSettingsOpen={() => setSettingsOpen(true)}
           unreadCount={unreadCount}
@@ -122,8 +140,8 @@ export default function App() {
           onClose={() => setChatOpen(false)}
           consumeVoice={consumeVoice}
           pendingVoice={pendingVoice}
-          feedMode={feedMode}
           onUnread={(count) => setUnreadCount((prev) => prev + count)}
+          workspace={chatWorkspace}
         />
         <SettingsModal
           open={settingsOpen}
