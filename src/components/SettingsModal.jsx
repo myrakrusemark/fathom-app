@@ -13,7 +13,7 @@ import {
 import TabBar from "./TabBar.jsx";
 import { ATMOSPHERES } from "../data/atmospheres.js";
 
-export default function SettingsModal({ open, onClose, onConnectionChange, isGate, atmosphere, onAtmosphereChange }) {
+export default function SettingsModal({ open, onClose, onConnectionChange, isGate, atmosphere, onAtmosphereChange, showBackstage, onShowBackstageChange }) {
   const [tab, setTab] = useState("connection");
   const [serverUrl, setServerUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
@@ -45,7 +45,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
         setApiKey(conn.apiKey);
       }
       setTestResult(null);
-      if (!isGate) setTab("connection");
+      if (!isGate) setTab("general");
     }
   }, [open, isGate]);
 
@@ -201,8 +201,8 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
   const canSave = serverUrl.trim() && apiKey.trim();
 
   const tabs = [
+    { id: "general", label: "General" },
     { id: "connection", label: "Connection" },
-    { id: "themes", label: "Themes" },
     { id: "comms", label: "Comms" },
     { id: "packages", label: "Packages" },
   ];
@@ -321,20 +321,36 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
             </>
           )}
 
-          {/* Themes tab */}
-          {!isGate && tab === "themes" && (
-            <div className="atmosphere-bar">
-              {ATMOSPHERES.map((a, i) => (
+          {/* General tab */}
+          {!isGate && tab === "general" && (
+            <>
+              <h3 className="settings-section-title">Theme</h3>
+              <div className="atmosphere-bar">
+                {ATMOSPHERES.map((a, i) => (
+                  <button
+                    key={a.label}
+                    className={`atmosphere-btn${atmosphere === i ? " active" : ""}`}
+                    onClick={() => onAtmosphereChange(i)}
+                  >
+                    <span className="atmosphere-dot" style={{ background: a.dot }} />
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+
+              <h3 className="settings-section-title">Navigation</h3>
+              <label className="settings-toggle-row">
+                <span>Show Backstage</span>
                 <button
-                  key={a.label}
-                  className={`atmosphere-btn${atmosphere === i ? " active" : ""}`}
-                  onClick={() => onAtmosphereChange(i)}
+                  type="button"
+                  className={`settings-toggle ${showBackstage ? "on" : ""}`}
+                  onClick={() => onShowBackstageChange(!showBackstage)}
+                  aria-label="Toggle Backstage visibility"
                 >
-                  <span className="atmosphere-dot" style={{ background: a.dot }} />
-                  {a.label}
+                  <span className="settings-toggle-knob" />
                 </button>
-              ))}
-            </div>
+              </label>
+            </>
           )}
 
           {/* Comms tab */}
@@ -398,13 +414,15 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                       <div className="settings-pkg-info">
                         <span
                           className={`settings-pkg-dot ${
-                            pkg.status === "installed" && pkg.authenticated !== false
+                            pkg.status === "installed" && pkg.authenticated === true
                               ? "installed"
-                              : pkg.status === "installed" && pkg.authenticated === false
-                                ? "warning"
-                                : pkg.status === "installing"
-                                  ? "installing"
-                                  : ""
+                              : pkg.status === "installed" && pkg.auth_error
+                                ? "error"
+                                : pkg.status === "installed" && pkg.authenticated === false
+                                  ? "warning"
+                                  : pkg.status === "installing"
+                                    ? "installing"
+                                    : ""
                           }`}
                         />
                         <div>
@@ -460,10 +478,37 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                       </div>
                     )}
 
+                    {/* Claude auth — invalid credentials */}
+                    {pkg.name === "claude" && pkg.status === "installed" && pkg.authenticated === false && pkg.auth_error && !claudeAuthMode && (
+                      <div className="settings-claude-auth invalid">
+                        <span className="settings-claude-auth-label">
+                          <span className="settings-claude-auth-error">{pkg.auth_error}</span>
+                          {pkg.auth_method && (
+                            <span className="settings-claude-auth-method">
+                              via {pkg.auth_method === "api-key" ? "API key" : pkg.auth_method === "oauth-token" ? "OAuth token" : "credentials file"}
+                            </span>
+                          )}
+                        </span>
+                        <span className="settings-claude-auth-actions">
+                          <button onClick={() => setClaudeAuthMode("change")}>Change</button>
+                          <span className="sep">|</span>
+                          <button
+                            className="danger"
+                            onClick={async () => {
+                              if (!confirm("Remove Claude Code credentials?")) return;
+                              try { await deleteClaudeCredentials(); loadPackages(); } catch { /* silent */ }
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </span>
+                      </div>
+                    )}
+
                     {/* Claude auth — not authenticated or changing */}
-                    {pkg.name === "claude" && pkg.status === "installed" && (pkg.authenticated === false || claudeAuthMode === "change") && (
+                    {pkg.name === "claude" && pkg.status === "installed" && ((pkg.authenticated === false && !pkg.auth_error) || claudeAuthMode === "change") && (
                       <div className="settings-claude-auth unauthenticated">
-                        {pkg.authenticated === false && <p className="settings-claude-auth-warning">Not authenticated</p>}
+                        {pkg.authenticated === false && !pkg.auth_error && <p className="settings-claude-auth-warning">Not authenticated</p>}
                         {claudeAuthMode === "change" && <p className="settings-claude-auth-warning" style={{ color: "var(--text-secondary)" }}>Change credentials</p>}
 
                         {(!claudeAuthMode || claudeAuthMode === "change") && (

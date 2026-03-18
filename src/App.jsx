@@ -22,6 +22,12 @@ export default function App() {
   const [connected, setConnected] = useState(isConnected());
   const [unreadCount, setUnreadCount] = useState(0);
   const [atmosphere, setAtmosphere] = useState(0);
+  const [showBackstage, setShowBackstage] = useState(() => localStorage.getItem('fathom-show-backstage') === 'true');
+
+  // Persist backstage toggle
+  useEffect(() => {
+    localStorage.setItem('fathom-show-backstage', showBackstage);
+  }, [showBackstage]);
 
   // Auto-trigger onboarding on mount if connected to a fresh instance
   useEffect(() => {
@@ -134,6 +140,7 @@ export default function App() {
           onVoiceResult={handleVoiceResult}
           onSettingsOpen={() => setSettingsOpen(true)}
           unreadCount={unreadCount}
+          showBackstage={showBackstage}
         />
         <ChatSheet
           open={chatOpen}
@@ -150,6 +157,8 @@ export default function App() {
           isGate={false}
           atmosphere={atmosphere}
           onAtmosphereChange={setAtmosphere}
+          showBackstage={showBackstage}
+          onShowBackstageChange={setShowBackstage}
         />
       </div>
     </>

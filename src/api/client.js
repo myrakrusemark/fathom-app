@@ -188,6 +188,10 @@ export function deleteClaudeCredentials() {
   return request("/api/packages/claude/credentials", { method: "DELETE" });
 }
 
+export function validateClaudeCredentials() {
+  return request("/api/packages/claude/validate", { method: "POST" });
+}
+
 export function submitOnboarding(name, interests) {
   const conn = getConnection();
   if (!conn) throw new Error("Not connected");

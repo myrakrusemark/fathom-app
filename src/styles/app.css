@@ -2699,6 +2699,10 @@ body {
   background: #f59e0b;
 }
 
+.settings-pkg-dot.error {
+  background: #dc2626;
+}
+
 /* Claude auth section */
 .settings-claude-auth {
   margin-top: 8px;
@@ -2718,6 +2722,15 @@ body {
 .settings-claude-auth.unauthenticated {
   background: rgba(245, 158, 11, 0.08);
   border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.settings-claude-auth.invalid {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.settings-claude-auth.invalid .settings-claude-auth-label {
+  color: #dc2626;
 }
 
 .settings-claude-auth-label {
