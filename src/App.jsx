@@ -81,7 +81,7 @@ export default function App() {
       }
     }
     init();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Apply atmosphere to body globally
   useEffect(() => {
