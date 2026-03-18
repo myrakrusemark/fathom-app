@@ -6,7 +6,7 @@ import { feedSanitizeSchema } from "../lib/sanitize.js";
 import PhotoSwipeLightbox from "photoswipe/lightbox";
 import "photoswipe/style.css";
 import { sendReaction, postToRoom, readRoom } from "../api/client.js";
-import { getConnection } from "../lib/connection.js";
+import { getConnection, getHumanUser } from "../lib/connection.js";
 import ChatMessage from "./ChatMessage.jsx";
 
 function timeAgo(timestamp) {
@@ -66,7 +66,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
   // Poll room for replies while panel is open
   useEffect(() => {
     function poll() {
-      readRoom(roomName, 1440, "myra")
+      readRoom(roomName, 1440, getHumanUser())
         .then((data) => {
           const msgs = (data.messages || []).map((m) => ({
             id: m.id,
@@ -105,7 +105,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
         setMessage("");
         setChatMessages((prev) => [
           ...prev,
-          { id: `local-${Date.now()}`, sender: "myra", text, timestamp: new Date().toISOString() },
+          { id: `local-${Date.now()}`, sender: getHumanUser(), text, timestamp: new Date().toISOString() },
         ]);
       })
       .catch(console.error)
@@ -272,7 +272,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
                   key={msg.id}
                   msg={{
                     id: msg.id,
-                    role: msg.sender === "myra" ? "user" : "agent",
+                    role: msg.sender === getHumanUser() ? "user" : "agent",
                     type: "text",
                     text: stripChatDecorations(msg.text),
                     timestamp: msg.timestamp,

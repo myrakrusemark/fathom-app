@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getFeed, getWeather, listRooms, dismissFeedItem, fireRoutine } from "../api/client.js";
+import { getHumanUser } from "../lib/connection.js";
 import FeedItem from "./FeedItem.jsx";
 import FeedDetailPanel from "./FeedDetailPanel.jsx";
 import FeedEmpty from "./FeedEmpty.jsx";
@@ -133,7 +134,7 @@ export default function Feed({
   useEffect(() => {
     let cancelled = false;
     function fetchRooms() {
-      listRooms("myra")
+      listRooms(getHumanUser())
         .then((data) => {
           if (cancelled) return;
           const unread = new Set();

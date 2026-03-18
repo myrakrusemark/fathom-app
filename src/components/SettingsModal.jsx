@@ -169,11 +169,13 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
 
   function handleSave() {
     if (!serverUrl.trim() || !apiKey.trim()) return;
-    const primaryWorkspace = testResult?.data?.primary_workspace || "fathom";
+    const d = testResult?.data || {};
     saveConnection({
       serverUrl: serverUrl.trim(),
       apiKey: apiKey.trim(),
-      primaryWorkspace,
+      primaryWorkspace: d.primaryWorkspace || d.primary_workspace || "fathom",
+      humanUser: d.humanUser,
+      humanDisplayName: d.humanDisplayName,
     });
     onConnectionChange();
     if (!isGate) onClose();

@@ -1,4 +1,4 @@
-import { getConnection } from "../lib/connection.js";
+import { getConnection, getHumanUser } from "../lib/connection.js";
 
 function request(path, options = {}) {
   const conn = getConnection();
@@ -101,7 +101,8 @@ export function getReceipt(id) {
   return request(`/api/receipts/${id}`);
 }
 
-export function postToRoom(roomName, message, sender = "myra") {
+export function postToRoom(roomName, message, sender = null) {
+  sender = sender || getHumanUser();
   return request(`/api/room/${encodeURIComponent(roomName)}`, {
     method: "POST",
     body: JSON.stringify({ message, sender }),
@@ -121,11 +122,12 @@ export function listRooms(workspace = "*") {
 export function sendReaction(workspace, reaction, item) {
   const emoji = reaction === "up" ? "\u{1F44D}" : "\u{1F44E}";
   const verb = reaction === "up" ? "liked" : "disliked";
+  const human = getHumanUser();
   const message = `${emoji} Human ${verb} your notification:\n\n**${item.title}**\n${item.body}`;
-  const room = `dm:${["myra", workspace].sort().join("+")}`;
+  const room = `dm:${[human, workspace].sort().join("+")}`;
   return request(`/api/room/${encodeURIComponent(room)}`, {
     method: "POST",
-    body: JSON.stringify({ message, sender: "myra" }),
+    body: JSON.stringify({ message, sender: human }),
   });
 }
 
@@ -225,10 +227,22 @@ export async function testConnection(serverUrl, apiKey) {
   if (!authRes.ok) throw new Error(`Auth check failed (${authRes.status})`);
 
   const data = await authRes.json();
+  const profiles = data.profiles || data;
 
   // Find the primary workspace from server config
-  const workspaceNames = Object.keys(data.profiles || data);
+  const workspaceNames = Object.keys(profiles);
   const primaryWorkspace = workspaceNames.includes("fathom") ? "fathom" : workspaceNames[0] || "fathom";
 
-  return { version: version.current, primaryWorkspace };
+  // Find the human workspace for identity
+  let humanUser = "user";
+  let humanDisplayName = "User";
+  for (const [key, val] of Object.entries(profiles)) {
+    if (val && val.type === "human") {
+      humanUser = key;
+      humanDisplayName = val.display_name || key.charAt(0).toUpperCase() + key.slice(1);
+      break;
+    }
+  }
+
+  return { version: version.current, primaryWorkspace, humanUser, humanDisplayName };
 }

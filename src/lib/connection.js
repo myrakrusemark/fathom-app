@@ -12,12 +12,28 @@ export function getConnection() {
   }
 }
 
-export function saveConnection({ serverUrl, apiKey, primaryWorkspace }) {
+export function saveConnection({ serverUrl, apiKey, primaryWorkspace, humanUser, humanDisplayName }) {
   const cleaned = serverUrl.replace(/\/+$/, "");
   localStorage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ serverUrl: cleaned, apiKey, primaryWorkspace: primaryWorkspace || "fathom" }),
+    JSON.stringify({
+      serverUrl: cleaned,
+      apiKey,
+      primaryWorkspace: primaryWorkspace || "fathom",
+      humanUser: humanUser || "user",
+      humanDisplayName: humanDisplayName || "User",
+    }),
   );
+}
+
+export function getHumanUser() {
+  const conn = getConnection();
+  return conn?.humanUser || "user";
+}
+
+export function getHumanDisplayName() {
+  const conn = getConnection();
+  return conn?.humanDisplayName || "User";
 }
 
 export function clearConnection() {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { listRooms, readRoom, getWorkspaceProfiles } from "../api/client.js";
+import { getHumanUser, getHumanDisplayName } from "../lib/connection.js";
 
 function timeAgo(timestamp) {
   if (!timestamp) return "";
@@ -196,7 +197,7 @@ export default function Comms() {
           onChange={(e) => handlePerspectiveChange(e.target.value)}
         >
           <option value="all">All</option>
-          <option value="myra">Myra</option>
+          <option value={getHumanUser()}>{getHumanDisplayName()}</option>
           {workspaces.map((ws) => (
             <option key={ws} value={ws}>{prettyName(ws)}</option>
           ))}

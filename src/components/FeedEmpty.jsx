@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getSuggestions, postToRoom } from "../api/client.js";
+import { getHumanUser, getHumanDisplayName } from "../lib/connection.js";
 
 const SCOUT_CURATE_ROUTINE_ID = "scout-curate";
 
@@ -47,14 +48,15 @@ export default function FeedEmpty() {
   function sendToScout(message) {
     setPhase("sending");
     // Post DM so Scout has the request (Scout is already running from useEffect fire)
-    postToRoom("dm:myra+scout", message, "myra")
+    const human = getHumanUser();
+    postToRoom(`dm:${[human, "scout"].sort().join("+")}`, message)
       .then(() => setPhase("confirmed"))
       .catch(() => setPhase("confirmed")); // show confirmation even on error
   }
 
   function handlePick(suggestion) {
     sendToScout(
-      `[APP REQUEST] Myra picked: "${suggestion.title}". ` +
+      `[APP REQUEST] ${getHumanDisplayName()} picked: "${suggestion.title}". ` +
       `DO NOT reply to this DM — she won't see it. ` +
       `Follow up by posting a #notification (featured layout) with your plan or clarifying questions. See CLAUDE.md § Route Requests.`
     );
@@ -64,7 +66,7 @@ export default function FeedEmpty() {
     e.preventDefault();
     if (!customText.trim()) return;
     sendToScout(
-      `[APP REQUEST] Myra wants: ${customText.trim()}. ` +
+      `[APP REQUEST] ${getHumanDisplayName()} wants: ${customText.trim()}. ` +
       `DO NOT reply to this DM — she won't see it. ` +
       `Follow up by posting a #notification (featured layout) with your plan or clarifying questions. See CLAUDE.md § Route Requests.`
     );
