@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { getWsUrl, getWorkspace, sendMessage, uploadAttachment } from "../api/client.js";
+import { getWsUrl, getWorkspace, sendMessage, uploadAttachment, sendDm, pollDmRoom } from "../api/client.js";
+import { getHumanUser } from "../lib/connection.js";
 import ChatMessage, { ToolGroup, formatSize } from "./ChatMessage.jsx";
 
 const FRESH_CHAT_MESSAGES = [
@@ -12,6 +13,33 @@ const FRESH_CHAT_MESSAGES = [
     memories: 0,
   },
 ];
+
+const DM_WELCOME_MESSAGE = {
+  id: "dm-welcome",
+  role: "agent",
+  type: "text",
+  text: "This is our DM channel. Messages here persist across sessions. I'll see anything you send next time I wake up, and you'll see my replies here too.",
+  timestamp: new Date().toISOString(),
+  memories: 0,
+};
+
+/** Convert a room message to a ChatMessage-compatible object. */
+function roomMsgToChatMsg(msg) {
+  const human = getHumanUser();
+  const meta = msg.metadata
+    ? typeof msg.metadata === "string"
+      ? JSON.parse(msg.metadata)
+      : msg.metadata
+    : {};
+  return {
+    id: `dm-${msg.id}`,
+    role: msg.sender === human ? "user" : "agent",
+    type: "text",
+    text: msg.message,
+    timestamp: msg.timestamp,
+    memories: meta.memories || 0,
+  };
+}
 
 let msgCounter = 0;
 
@@ -65,7 +93,7 @@ function eventToMessages(event) {
         if (toolName.includes("send_voice") && block.input?.text) {
           out.push({ id, role: "agent", type: "voice", text: block.input.text, duration: 0, audio_url: null, timestamp: ts, memories: 0, _toolId: block.id });
         } else {
-          out.push({ id, role: "agent", type: "tool", name: toolName, status: "done", timestamp: ts });
+          out.push({ id, role: "agent", type: "tool", name: toolName, input: block.input || null, status: "done", timestamp: ts });
         }
       } else if (block.type === "thinking") {
         // Working indicator handled by isProcessing state — no message needed
@@ -146,8 +174,14 @@ function eventToMessages(event) {
     // Session continuation prompts — skip
     if (content === "Continue from where you left off.") return [];
 
-    // Dashboard messages and general user input
+    // Routine fire — show as a ping event with full prompt content
     const source = data.source || "";
+    if (source.startsWith("routine:")) {
+      const routineId = source.replace("routine:", "");
+      return [{ id: `ws-${seq}`, role: "system", type: "ping", routineId, text: content, timestamp: ts }];
+    }
+
+    // Dashboard messages and general user input
     if (source === "dashboard" || source === "voice" || source === "history") {
       // Filter out long hook content that slipped through
       if (content.length > 300) return [];
@@ -281,13 +315,16 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
   const [pendingPreview, setPendingPreview] = useState(null);
+  const [waitingForReply, setWaitingForReply] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const sheetRef = useRef(null);
   const wsRef = useRef(null);
+  const pollRef = useRef(null);
   const openRef = useRef(open);
   openRef.current = open;
+  const isDmMode = !workspace;
   const activeWorkspace = workspace || getWorkspace();
 
   useEffect(() => {
@@ -303,6 +340,64 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
     setPendingPreview(null);
   }, [pendingFile]);
 
+  // --- DM Mode: load history + poll ---
+  const loadDmHistory = useCallback(async () => {
+    try {
+      const data = await pollDmRoom(1440); // last 24h
+      const roomMsgs = data.messages || [];
+      const chatMsgs = roomMsgs.map(roomMsgToChatMsg);
+      setMessages((prev) => {
+        const localPending = prev.filter((m) => m.id.startsWith("local-"));
+        if (chatMsgs.length === 0 && localPending.length === 0) {
+          return [DM_WELCOME_MESSAGE];
+        }
+        // Merge: keep local optimistic messages not yet echoed
+        const merged = [...chatMsgs];
+        for (const local of localPending) {
+          if (!merged.some((m) => m.role === "user" && m.text === local.text)) {
+            merged.push(local);
+          }
+        }
+        return merged;
+      });
+    } catch {
+      setMessages([DM_WELCOME_MESSAGE]);
+    }
+  }, []);
+
+  const pollDm = useCallback(async () => {
+    try {
+      const data = await pollDmRoom(5); // last 5 min
+      const roomMsgs = data.messages || [];
+      const chatMsgs = roomMsgs.map(roomMsgToChatMsg);
+      if (chatMsgs.length === 0) return;
+      setMessages((prev) => {
+        let base = [...prev];
+        // Check if any new agent messages arrived — clear waiting state
+        const existingIds = new Set(base.map((m) => m.id));
+        const fresh = chatMsgs.filter((m) => !existingIds.has(m.id));
+        if (fresh.some((m) => m.role === "agent")) {
+          setWaitingForReply(false);
+        }
+        // Deduplicate optimistic local messages
+        for (const msg of fresh) {
+          if (msg.role === "user") {
+            const localIdx = base.findIndex((m) => m.id.startsWith("local-") && m.text === msg.text);
+            if (localIdx !== -1) {
+              base[localIdx] = { ...base[localIdx], id: msg.id };
+              continue;
+            }
+          }
+          base.push(msg);
+        }
+        return base;
+      });
+    } catch {
+      // ignore poll errors
+    }
+  }, []);
+
+  // --- Stream Mode: WebSocket ---
   const connectWs = useCallback(() => {
     const url = getWsUrl(`/ws/conversation/${activeWorkspace}`);
     if (!url) return;
@@ -429,16 +524,33 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
     if (open) {
       setMessages([]);
       setIsProcessing(false);
-      connectWs();
+      setWaitingForReply(false);
+      if (isDmMode) {
+        loadDmHistory();
+        // Start polling every 3s
+        pollRef.current = setInterval(pollDm, 3000);
+      } else {
+        connectWs();
+      }
     } else {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
       disconnectWs();
     }
-    return () => disconnectWs();
-  }, [open, activeWorkspace, connectWs, disconnectWs]);
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      disconnectWs();
+    };
+  }, [open, activeWorkspace, isDmMode, connectWs, disconnectWs, loadDmHistory, pollDm]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isProcessing]);
+  }, [messages, isProcessing, waitingForReply]);
 
   useEffect(() => {
     if (open && pendingVoice) {
@@ -470,7 +582,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
       timestamp: new Date().toISOString(),
       memories: 0,
     };
-    if (file) {
+    if (file && !isDmMode) {
       userMsg.attachments = [{
         url: pendingPreview || null,
         label: file.name,
@@ -482,10 +594,17 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
       }];
     }
     setMessages((prev) => [...prev, userMsg]);
-    setIsProcessing(true);
+
+    if (isDmMode) {
+      setWaitingForReply(true);
+    } else {
+      setIsProcessing(true);
+    }
 
     try {
-      if (file) {
+      if (isDmMode) {
+        await sendDm(text);
+      } else if (file) {
         await uploadAttachment(file, text, workspace);
       } else {
         await sendMessage(text, workspace);
@@ -500,6 +619,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
         memories: 0,
       };
       setMessages((prev) => [...prev, errMsg]);
+      setWaitingForReply(false);
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -524,8 +644,8 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
         </div>
         <div className="chat-sheet-header">
           <span className="chat-sheet-title">
-            {activeWorkspace}
-            {open && (
+            {isDmMode ? "Fathom" : activeWorkspace}
+            {open && !isDmMode && (
               <span className={`connection-dot inline ${wsConnected ? "connected" : "disconnected"}`} />
             )}
           </span>
@@ -554,7 +674,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
             }
             return grouped;
           })()}
-          {isProcessing && (
+          {(isProcessing || waitingForReply) && (
             <div className="chat-working">
               <span className="chat-working-dot" />
               <span className="chat-working-dot" />
@@ -564,18 +684,20 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
           <div ref={bottomRef} />
         </div>
         <form className="chat-sheet-input" onSubmit={handleSend}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.csv,.json,.md"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) setPendingFile(f);
-              e.target.value = "";
-            }}
-          />
-          {pendingFile && (
+          {!isDmMode && (
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.csv,.json,.md"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setPendingFile(f);
+                e.target.value = "";
+              }}
+            />
+          )}
+          {pendingFile && !isDmMode && (
             <div className="chat-preview-strip">
               {pendingPreview ? (
                 <img className="chat-preview-thumb" src={pendingPreview} alt="" />
@@ -595,16 +717,18 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
             </div>
           )}
           <div className="chat-input-row">
-            <button
-              type="button"
-              className="chat-attach-btn"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={sending}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-              </svg>
-            </button>
+            {!isDmMode && (
+              <button
+                type="button"
+                className="chat-attach-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={sending}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                </svg>
+              </button>
+            )}
             <input
               ref={inputRef}
               type="text"
@@ -614,7 +738,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
               disabled={sending}
               autoComplete="off"
             />
-            <button type="submit" disabled={(!input.trim() && !pendingFile) || sending}>
+            <button type="submit" disabled={!input.trim() || sending}>
               <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
               </svg>
