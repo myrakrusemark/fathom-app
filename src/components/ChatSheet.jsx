@@ -398,6 +398,11 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
   }, []);
 
   // --- Stream Mode: WebSocket ---
+  // In DM mode, WebSocket is used only for memory-count events (badges).
+  // In workspace mode, WebSocket is the primary message source.
+  const isDmModeRef = useRef(isDmMode);
+  isDmModeRef.current = isDmMode;
+
   const connectWs = useCallback(() => {
     const url = getWsUrl(`/ws/conversation/${activeWorkspace}`);
     if (!url) return;
@@ -410,8 +415,10 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
     socket.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
+        const dmOnly = isDmModeRef.current;
 
         if (data.type === "history" && Array.isArray(data.events)) {
+          if (dmOnly) return; // DM mode gets messages from room polling, not WS history
           const msgs = attachMemoryCounts(enrichVoiceMessages(data.events.flatMap(eventToMessages), data.events));
           // Merge with any optimistic local messages not yet echoed
           setMessages((prev) => {
@@ -422,10 +429,10 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
         }
 
         if (data.type === "event") {
-          if (data.event_type === "assistant") {
+          if (!dmOnly && data.event_type === "assistant") {
             setIsProcessing(true);
           }
-          if (data.event_type === "result") {
+          if (!dmOnly && data.event_type === "result") {
             setIsProcessing(false);
           }
           // Normalize: real-time events have event_type at top level
@@ -436,6 +443,38 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
             timestamp: data.timestamp,
           };
           const newMsgs = eventToMessages(normalized);
+
+          // In DM mode, only process memory-count markers from WebSocket
+          const memoryMarkers = newMsgs.filter((m) => m.type === "memory-count");
+          if (dmOnly) {
+            if (memoryMarkers.length === 0) return;
+            setMessages((prev) => {
+              const base = [...prev];
+              for (const marker of memoryMarkers) {
+                if (marker.isStop) {
+                  // Stop hook → attach to last agent message
+                  for (let j = base.length - 1; j >= 0; j--) {
+                    if (base[j].role === "agent" && (base[j].type === "text" || base[j].type === "presence")) {
+                      base[j] = { ...base[j], memories: (base[j].memories || 0) + marker.memories };
+                      break;
+                    }
+                  }
+                } else {
+                  // UserPromptSubmit hook → attach to last user message
+                  for (let j = base.length - 1; j >= 0; j--) {
+                    if (base[j].role === "user" && base[j].type === "text") {
+                      base[j] = { ...base[j], memories: (base[j].memories || 0) + marker.memories };
+                      break;
+                    }
+                  }
+                }
+              }
+              return base;
+            });
+            return;
+          }
+
+          // --- Workspace mode: full event processing ---
           // Track unread agent messages when chat is closed
           if (!openRef.current && onUnread) {
             const agentTexts = newMsgs.filter((m) => m.role === "agent" && m.type === "text");
@@ -443,8 +482,6 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
           }
           if (newMsgs.length > 0) {
             setMessages((prev) => {
-              // Handle memory-count markers: attach to adjacent messages
-              const memoryMarkers = newMsgs.filter((m) => m.type === "memory-count");
               const regularMsgs = newMsgs.filter((m) => m.type !== "memory-count");
 
               let base = prev;
@@ -503,7 +540,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
 
     socket.onclose = () => {
       setWsConnected(false);
-      setIsProcessing(false);
+      if (!isDmModeRef.current) setIsProcessing(false);
       wsRef.current = null;
     };
 
@@ -527,8 +564,10 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
       setWaitingForReply(false);
       if (isDmMode) {
         loadDmHistory();
-        // Start polling every 3s
+        // Start polling every 3s for messages
         pollRef.current = setInterval(pollDm, 3000);
+        // Also connect WebSocket for memory-count events (badges)
+        connectWs();
       } else {
         connectWs();
       }
