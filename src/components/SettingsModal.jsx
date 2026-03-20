@@ -357,7 +357,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                   <span className="settings-toggle-knob" />
                 </button>
               </label>
-              <p className="settings-toggle-desc">Displays the Backstage tab with routines, communications, and other information sources.</p>
+              <p className="settings-toggle-desc">Displays the Backstage tab with routines, communications, and other information sources. Also enables permission request toasts.</p>
             </>
           )}
 

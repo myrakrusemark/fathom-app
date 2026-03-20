@@ -58,7 +58,7 @@ function extractText(content) {
 
 /** Convert a raw conversation event into one or more renderable messages.
  *  Returns an array since one assistant event can contain text + tool_use blocks. */
-function eventToMessages(event) {
+function eventToMessages(event, currentWorkspace) {
   const evType = event.type || event.event_type;
   const data = event.data || {};
   // Timestamps come as Unix seconds from the server
@@ -94,6 +94,14 @@ function eventToMessages(event) {
           out.push({ id, role: "agent", type: "voice", text: block.input.text, duration: 0, audio_url: null, timestamp: ts, memories: 0, _toolId: block.id });
         } else {
           out.push({ id, role: "agent", type: "tool", name: toolName, input: block.input || null, status: "done", timestamp: ts });
+          // DM send — also render the message content as a labeled bubble
+          if (toolName.includes("fathom_send") && block.input?.message && block.input?.workspace) {
+            out.push({ id: `${id}-dm`, role: "agent", type: "text", text: block.input.message, timestamp: ts, memories: 0, dmTo: block.input.workspace });
+          } else if (toolName.includes("room_post") && block.input?.room?.startsWith("dm:") && block.input?.message) {
+            const parts = block.input.room.slice(3).split("+");
+            const target = parts.find((p) => p !== currentWorkspace) || parts.join("+");
+            out.push({ id: `${id}-dm`, role: "agent", type: "text", text: block.input.message, timestamp: ts, memories: 0, dmTo: target });
+          }
         }
       } else if (block.type === "thinking") {
         // Working indicator handled by isProcessing state — no message needed
@@ -121,6 +129,16 @@ function eventToMessages(event) {
         return [{ id: `ws-${seq}`, role: "hook", type: "memory-count", memories: bulletCount, timestamp: ts, isStop: firstLine.startsWith("Stop hook") }];
       }
       return [];
+    }
+    // DM from another workspace (fathom_send format)
+    const userDmMatch = text.match(/^Message from workspace \((.+?)\): (.+?)(?:\n\[Reply with:.*)?$/s);
+    if (userDmMatch) {
+      return [{ id: `ws-${seq}`, role: "dm", type: "text", text: userDmMatch[2].trim(), sender: userDmMatch[1], timestamp: ts, memories: 0 }];
+    }
+    // DM delivery (room post format)
+    const userDmFromMatch = text.match(/^DM from (.+?): (.+?)(?:\n\(Read the conversation.*)?$/s);
+    if (userDmFromMatch) {
+      return [{ id: `ws-${seq}`, role: "dm", type: "text", text: userDmFromMatch[2].trim(), sender: userDmFromMatch[1], timestamp: ts, memories: 0 }];
     }
     return [{ id: `ws-${seq}`, role: "user", type: "text", text, timestamp: ts, memories: 0 }];
   }
@@ -159,16 +177,16 @@ function eventToMessages(event) {
       return [];
     }
 
-    // DM from another workspace
-    const dmMatch = content.match(/^Message from workspace \((.+?)\): (.+)/s);
+    // DM from another workspace (fathom_send format)
+    const dmMatch = content.match(/^Message from workspace \((.+?)\): (.+?)(?:\n\[Reply with:.*)?$/s);
     if (dmMatch) {
-      return [{ id: `ws-${seq}`, role: "user", type: "text", text: `${dmMatch[1]}: ${dmMatch[2]}`, timestamp: ts, memories: 0 }];
+      return [{ id: `ws-${seq}`, role: "dm", type: "text", text: dmMatch[2].trim(), sender: dmMatch[1], timestamp: ts, memories: 0 }];
     }
 
-    // DM delivery notifications
-    if (content.startsWith("DM from ")) {
-      const dmText = content.split("\n")[0].replace(/^DM from \S+: /, "");
-      return [{ id: `ws-${seq}`, role: "user", type: "text", text: dmText, timestamp: ts, memories: 0 }];
+    // DM delivery notifications (room post format)
+    const dmFromMatch = content.match(/^DM from (.+?): (.+?)(?:\n\(Read the conversation.*)?$/s);
+    if (dmFromMatch) {
+      return [{ id: `ws-${seq}`, role: "dm", type: "text", text: dmFromMatch[2].trim(), sender: dmFromMatch[1], timestamp: ts, memories: 0 }];
     }
 
     // Session continuation prompts — skip
@@ -419,7 +437,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
 
         if (data.type === "history" && Array.isArray(data.events)) {
           if (dmOnly) return; // DM mode gets messages from room polling, not WS history
-          const msgs = attachMemoryCounts(enrichVoiceMessages(data.events.flatMap(eventToMessages), data.events));
+          const msgs = attachMemoryCounts(enrichVoiceMessages(data.events.flatMap((e) => eventToMessages(e, activeWorkspace)), data.events));
           // Merge with any optimistic local messages not yet echoed
           setMessages((prev) => {
             const localPending = prev.filter((m) => m.id.startsWith("local-") && !msgs.some((wm) => wm.role === "user" && wm.text === m.text));
@@ -442,7 +460,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
             data: data.data,
             timestamp: data.timestamp,
           };
-          const newMsgs = eventToMessages(normalized);
+          const newMsgs = eventToMessages(normalized, activeWorkspace);
 
           // In DM mode, only process memory-count markers from WebSocket
           const memoryMarkers = newMsgs.filter((m) => m.type === "memory-count");

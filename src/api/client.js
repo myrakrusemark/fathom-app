@@ -109,10 +109,37 @@ export function postToRoom(roomName, message, sender = null) {
   });
 }
 
-export function readRoom(roomName, minutes = 60, workspace = null) {
+export function readRoom(roomName, minutes = 60, workspace = null, markRead = false) {
   let url = `/api/room/${encodeURIComponent(roomName)}?minutes=${minutes}`;
   if (workspace) url += `&workspace=${encodeURIComponent(workspace)}`;
+  if (markRead) url += `&mark_read=true`;
   return request(url);
+}
+
+export function getDmRoomName() {
+  const ws = getWorkspace();
+  const human = getHumanUser();
+  const sorted = [ws, human].sort();
+  return `dm:${sorted.join("+")}`;
+}
+
+export function sendDm(message) {
+  return postToRoom(getDmRoomName(), message, getHumanUser());
+}
+
+export function pollDmRoom(minutes = 5) {
+  const human = getHumanUser();
+  return readRoom(getDmRoomName(), minutes, human, true);
+}
+
+export function getDmUnreadCount() {
+  const human = getHumanUser();
+  const dmRoom = getDmRoomName();
+  return listRooms(human).then((data) => {
+    const rooms = data.rooms || data || [];
+    const dm = rooms.find((r) => r.name === dmRoom);
+    return dm?.unread_count || 0;
+  });
 }
 
 export function listRooms(workspace = "*") {
@@ -153,6 +180,17 @@ export function vaultRawUrl(filePath, workspace) {
   return `${conn.serverUrl}/api/vault/raw/${filePath}?workspace=${encodeURIComponent(workspace)}&token=${conn.apiKey}`;
 }
 
+export function getPendingPermissions() {
+  return request("/api/permissions/pending");
+}
+
+export function respondPermission(requestId, allow, reason = "") {
+  return request(`/api/permissions/${requestId}/respond`, {
+    method: "POST",
+    body: JSON.stringify({ allow, reason }),
+  });
+}
+
 export function getSettings() {
   return request("/api/settings");
 }
@@ -186,6 +224,22 @@ export function saveClaudeCredentials(key, type) {
 
 export function deleteClaudeCredentials() {
   return request("/api/packages/claude/credentials", { method: "DELETE" });
+}
+
+export function saveMementoCredentials(key) {
+  return request("/api/packages/memento/credentials", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key }),
+  });
+}
+
+export function provisionMementoKey() {
+  return request("/api/packages/memento/provision", { method: "POST" });
+}
+
+export function deleteMementoCredentials() {
+  return request("/api/packages/memento/credentials", { method: "DELETE" });
 }
 
 export function validateClaudeCredentials() {

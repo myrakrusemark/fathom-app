@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { isConnected, detectSameOrigin, saveConnection } from "./lib/connection.js";
-import { getOnboardingStatus, submitOnboarding } from "./api/client.js";
+import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm } from "./api/client.js";
 import Feed from "./components/Feed.jsx";
 import { ATMOSPHERES } from "./data/atmospheres.js";
 import Routines from "./components/Routines.jsx";
@@ -11,6 +11,7 @@ import NavBar from "./components/NavBar.jsx";
 import Onboarding from "./components/Onboarding.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
 import SetupPackages from "./components/SetupPackages.jsx";
+import PermissionToasts from "./components/PermissionToasts.jsx";
 
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
@@ -32,6 +33,20 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('fathom-show-backstage', showBackstage);
   }, [showBackstage]);
+
+  // Background DM unread polling — only when chat is closed
+  useEffect(() => {
+    if (!connected || setupPhase !== "done") return;
+    if (chatOpen && !chatWorkspace) return; // DM chat is open, it handles its own read marking
+    const poll = () => {
+      getDmUnreadCount()
+        .then((count) => setUnreadCount(count))
+        .catch(() => {});
+    };
+    poll(); // initial check
+    const id = setInterval(poll, 15000);
+    return () => clearInterval(id);
+  }, [connected, setupPhase, chatOpen, chatWorkspace]);
 
   // On mount: try same-origin auto-connect, then check onboarding status
   useEffect(() => {
@@ -124,6 +139,10 @@ export default function App() {
   }, []);
 
   function handleVoiceResult(text) {
+    if (!chatWorkspace) {
+      // DM mode — send voice transcript as DM instead of stream-json injection
+      sendDm(text).catch(() => {});
+    }
     setPendingVoice(text);
     setUnreadCount(0);
     setChatOpen(true);
@@ -189,6 +208,7 @@ export default function App() {
           <Onboarding onComplete={handleOnboardComplete} />
         </div>
       )}
+      {setupPhase === "done" && showBackstage && <PermissionToasts />}
       <div className="app">
         <Routes>
           <Route path="/" element={
