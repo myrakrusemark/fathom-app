@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
@@ -99,11 +99,21 @@ function StackedRow({ sub, onSelect, onDismiss, unread }) {
   );
 }
 
-export default function FeedItem({ item, stackedItems, unreadThread, unreadThreads, onSelect, onDismiss }) {
+export default function FeedItem({ item, stackedItems, unreadThread, unreadThreads, onSelect, onDismiss, showSwipeHint }) {
   const [expanded, setExpanded] = useState(false);
   const cardRef = useRef(null);
   const swipeStart = useRef(0);
   const swipeDx = useRef(0);
+  const [hintClass, setHintClass] = useState("");
+
+  useEffect(() => {
+    if (!showSwipeHint) return;
+    if (sessionStorage.getItem("swipe-hint-shown")) return;
+    sessionStorage.setItem("swipe-hint-shown", "true");
+    setHintClass("feed-item-swipe-hint");
+    const timer = setTimeout(() => setHintClass(""), 1300);
+    return () => clearTimeout(timer);
+  }, [showSwipeHint]);
 
   const handleTouchStart = useCallback((e) => {
     swipeStart.current = e.touches[0].clientX;
@@ -189,7 +199,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
   return (
     <article
       ref={cardRef}
-      className={`feed-item${item.layout ? ` layout-${item.layout}` : ""}`}
+      className={`feed-item${item.layout ? ` layout-${item.layout}` : ""}${hintClass ? ` ${hintClass}` : ""}`}
       onClick={handleClick}
       onKeyDown={(e) => { if (e.key === "Enter") handleClick(); }}
       onTouchStart={handleTouchStart}

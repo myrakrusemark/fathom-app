@@ -199,11 +199,11 @@ export default function Feed({
 
           <div className="feed">
             {newItems.length === 0 && <FeedEmpty />}
-            {stackByWorkspace(newItems).map((entry) =>
+            {stackByWorkspace(newItems).map((entry, index) =>
               entry.stacked ? (
                 <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} unreadThreads={unreadThreads}onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />
               ) : (
-                <FeedItem key={entry.item.id} item={entry.item} unreadThread={unreadThreads.has(entry.item.id)}onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />
+                <FeedItem key={entry.item.id} item={entry.item} unreadThread={unreadThreads.has(entry.item.id)}onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} showSwipeHint={index === 0} />
               )
             )}
           </div>
