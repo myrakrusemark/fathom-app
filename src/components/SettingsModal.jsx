@@ -9,6 +9,8 @@ import {
   uninstallPackage,
   saveClaudeCredentials,
   deleteClaudeCredentials,
+  saveMementoCredentials,
+  deleteMementoCredentials,
 } from "../api/client.js";
 import TabBar from "./TabBar.jsx";
 import { ATMOSPHERES } from "../data/atmospheres.js";
@@ -36,6 +38,11 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
   const [claudeCredential, setClaudeCredential] = useState("");
   const [claudeCredSaving, setClaudeCredSaving] = useState(false);
   const [claudeCredError, setClaudeCredError] = useState("");
+
+  // Memento auth state
+  const [mementoKey, setMementoKey] = useState("");
+  const [mementoSaving, setMementoSaving] = useState(false);
+  const [mementoError, setMementoError] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -204,7 +211,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
     { id: "general", label: "General" },
     { id: "connection", label: "Connection" },
     { id: "comms", label: "Comms" },
-    { id: "packages", label: "Packages" },
+    { id: "packages", label: "Integrations" },
   ];
 
   return (
@@ -400,14 +407,14 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
             </>
           )}
 
-          {/* Packages tab */}
+          {/* Integrations tab */}
           {!isGate && tab === "packages" && (
             <>
-              <h3 className="settings-section-title">Packages</h3>
+              <h3 className="settings-section-title">Integrations</h3>
               {packagesLoading && packages.length === 0 ? (
                 <p className="settings-loading">Loading...</p>
               ) : packages.length === 0 ? (
-                <p className="settings-loading">No packages available</p>
+                <p className="settings-loading">No integrations available</p>
               ) : (
                 packages.map((pkg) => (
                   <div key={pkg.name} className="settings-pkg-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
@@ -415,7 +422,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                       <div className="settings-pkg-info">
                         <span
                           className={`settings-pkg-dot ${
-                            pkg.status === "installed" && pkg.authenticated === true
+                            pkg.status === "installed" && (pkg.authenticated === true || pkg.authenticated === undefined)
                               ? "installed"
                               : pkg.status === "installed" && pkg.auth_error
                                 ? "error"
@@ -434,7 +441,9 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                         </div>
                       </div>
                       <div className="settings-pkg-actions">
-                        {pkg.status === "installed" ? (
+                        {pkg.preinstalled ? (
+                          <span className="settings-pkg-status" style={{ opacity: 0.5, fontSize: "0.8rem" }}>Built-in</span>
+                        ) : pkg.status === "installed" ? (
                           <button
                             className="settings-pkg-btn uninstall"
                             onClick={() => handleUninstall(pkg.name)}
@@ -454,13 +463,68 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                       </div>
                     </div>
 
+                    {/* Memento auth */}
+                    {pkg.name === "memento" && pkg.authenticated === true && (
+                      <div className="settings-claude-auth authenticated">
+                        <span className="settings-claude-auth-label">Configured</span>
+                        <span className="settings-claude-auth-actions">
+                          <button
+                            className="danger"
+                            onClick={async () => {
+                              if (!confirm("Remove Memento API key?")) return;
+                              try { await deleteMementoCredentials(); loadPackages(); } catch { /* silent */ }
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </span>
+                      </div>
+                    )}
+
+                    {pkg.name === "memento" && pkg.authenticated !== true && (
+                      <div className="settings-claude-auth unauthenticated">
+                        {pkg.auth_error && <p className="settings-claude-auth-error">{pkg.auth_error}</p>}
+                        <div className="settings-claude-auth-form">
+                          <input
+                            type="password"
+                            placeholder="Memento API key..."
+                            value={mementoKey}
+                            onChange={(e) => { setMementoKey(e.target.value); setMementoError(""); }}
+                          />
+                          <button
+                            disabled={!mementoKey || mementoSaving}
+                            onClick={async () => {
+                              setMementoSaving(true);
+                              setMementoError("");
+                              try {
+                                const res = await saveMementoCredentials(mementoKey);
+                                if (res.error) { setMementoError(res.error); return; }
+                                setMementoKey("");
+                                loadPackages();
+                              } catch {
+                                setMementoError("Failed to save");
+                              } finally {
+                                setMementoSaving(false);
+                              }
+                            }}
+                          >
+                            {mementoSaving ? "..." : "Save"}
+                          </button>
+                        </div>
+                        {mementoError && <p className="settings-claude-auth-error">{mementoError}</p>}
+                        <p style={{ fontSize: "0.8rem", opacity: 0.5, marginTop: "0.25rem" }}>
+                          Get a key at hifathom.com/memento/
+                        </p>
+                      </div>
+                    )}
+
                     {/* Claude auth — authenticated */}
                     {pkg.name === "claude" && pkg.status === "installed" && pkg.authenticated === true && !claudeAuthMode && (
                       <div className="settings-claude-auth authenticated">
                         <span className="settings-claude-auth-label">
                           Authenticated
                           <span className="settings-claude-auth-method">
-                            via {pkg.auth_method === "api-key" ? "API key" : pkg.auth_method === "oauth-token" ? "OAuth token" : "credentials file"}
+                            via {pkg.auth_method === "api-key" ? "API key" : pkg.auth_method === "credentials-file" ? "credentials file" : "OAuth token"}
                           </span>
                         </span>
                         <span className="settings-claude-auth-actions">
@@ -486,7 +550,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                           <span className="settings-claude-auth-error">{pkg.auth_error}</span>
                           {pkg.auth_method && (
                             <span className="settings-claude-auth-method">
-                              via {pkg.auth_method === "api-key" ? "API key" : pkg.auth_method === "oauth-token" ? "OAuth token" : "credentials file"}
+                              via {pkg.auth_method === "api-key" ? "API key" : pkg.auth_method === "credentials-file" ? "credentials file" : "OAuth token"}
                             </span>
                           )}
                         </span>
@@ -514,9 +578,9 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
 
                         {(!claudeAuthMode || claudeAuthMode === "change") && (
                           <div className="settings-claude-auth-options">
-                            <button className="settings-claude-auth-opt" onClick={() => setClaudeAuthMode("oauth-token")}>
-                              <span>Claude account token</span>
-                              <span className="hint">uses your Pro/Max plan</span>
+                            <button className="settings-claude-auth-opt" onClick={() => setClaudeAuthMode("credentials-file")}>
+                              <span>Credentials file</span>
+                              <span className="hint">auto-refreshed via Claude Code login</span>
                             </button>
                             <button className="settings-claude-auth-opt" onClick={() => setClaudeAuthMode("api-key")}>
                               <span>API key</span>
@@ -527,18 +591,20 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
 
                         {claudeAuthMode && claudeAuthMode !== "change" && (
                           <div className="settings-claude-auth-input">
-                            {claudeAuthMode === "oauth-token" && (
+                            {claudeAuthMode === "credentials-file" && (
                               <p className="settings-claude-auth-help">
-                                On a machine where you're logged into Claude Code, run:
+                                Add this bind-mount to your <code style={{ cursor: "auto" }}>docker-compose.yml</code> volumes:
                                 <code
                                   onClick={(e) => { navigator.clipboard.writeText(e.target.textContent); }}
-                                >cat ~/.claude/.credentials.json | python3 -c "import sys,json; print(json.load(sys.stdin)['claudeAiOauth']['accessToken'])"</code>
+                                >~/.claude/.credentials.json:/data/claude/.credentials.json:ro</code>
+                                Then restart the container. The token refreshes automatically when you run <code style={{ cursor: "auto" }}>claude login</code> on the host.
                               </p>
                             )}
+                            {claudeAuthMode === "api-key" && (<>
                             <div className="settings-claude-auth-form">
                               <input
                                 type="password"
-                                placeholder={claudeAuthMode === "api-key" ? "sk-ant-..." : "Paste token..."}
+                                placeholder="sk-ant-..."
                                 value={claudeCredential}
                                 onChange={(e) => { setClaudeCredential(e.target.value); setClaudeCredError(""); }}
                               />
@@ -564,6 +630,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                               </button>
                             </div>
                             {claudeCredError && <p className="settings-claude-auth-error">{claudeCredError}</p>}
+                            </>)}
                             <button
                               className="settings-claude-auth-back"
                               onClick={() => { setClaudeAuthMode(null); setClaudeCredential(""); setClaudeCredError(""); }}
