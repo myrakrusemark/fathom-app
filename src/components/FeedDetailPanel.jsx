@@ -54,9 +54,12 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
   const [chatMessages, setChatMessages] = useState([]);
   const inputRef = useRef(null);
   const pollRef = useRef(null);
-  const lastSendRef = useRef(null);
-
   const roomName = `notif-${item.workspace}-${item.id}`;
+  const lastSendStorageKey = `lastSend:${roomName}`;
+  const lastSendRef = useRef((() => {
+    const stored = sessionStorage.getItem(lastSendStorageKey);
+    return stored ? Number(stored) : null;
+  })());
 
   // Animate in
   useEffect(() => {
@@ -102,6 +105,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
     postToRoom(roomName, text)
       .then(() => {
         lastSendRef.current = now;
+        sessionStorage.setItem(lastSendStorageKey, String(now));
         setMessage("");
         setChatMessages((prev) => [
           ...prev,
