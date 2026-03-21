@@ -3,7 +3,8 @@ import { getWsUrl, getWorkspace, sendMessage, uploadAttachment, sendDm, pollDmRo
 import { getHumanUser } from "../lib/connection.js";
 import ChatMessage, { ToolGroup, formatSize } from "./ChatMessage.jsx";
 
-const FRESH_CHAT_MESSAGES = [
+function FreshChatMessages() {
+  return [
   {
     id: "fresh-1",
     role: "agent",
@@ -12,16 +13,19 @@ const FRESH_CHAT_MESSAGES = [
     timestamp: new Date().toISOString(),
     memories: 0,
   },
-];
+  ];
+}
 
-const DM_WELCOME_MESSAGE = {
+function dmWelcomeMessage() {
+  return {
   id: "dm-welcome",
   role: "agent",
   type: "text",
   text: "This is our DM channel. Messages here persist across sessions. I'll see anything you send next time I wake up, and you'll see my replies here too.",
   timestamp: new Date().toISOString(),
   memories: 0,
-};
+  };
+}
 
 /** Convert a room message to a ChatMessage-compatible object. */
 function roomMsgToChatMsg(msg) {
@@ -367,7 +371,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
       setMessages((prev) => {
         const localPending = prev.filter((m) => m.id.startsWith("local-"));
         if (chatMsgs.length === 0 && localPending.length === 0) {
-          return [DM_WELCOME_MESSAGE];
+          return [dmWelcomeMessage()];
         }
         // Merge: keep local optimistic messages not yet echoed
         const merged = [...chatMsgs];
@@ -379,7 +383,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
         return merged;
       });
     } catch {
-      setMessages([DM_WELCOME_MESSAGE]);
+      setMessages([dmWelcomeMessage()]);
     }
   }, []);
 
