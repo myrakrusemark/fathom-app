@@ -41,6 +41,9 @@ function StackedRow({ sub, onSelect, onDismiss, unread }) {
     if (dx.current > 0 && rowRef.current) {
       rowRef.current.style.transform = `translateX(${dx.current}px)`;
       rowRef.current.style.opacity = String(Math.max(0, 1 - dx.current / 200));
+    } else if (rowRef.current) {
+      rowRef.current.style.transform = "translateX(0)";
+      rowRef.current.style.opacity = "1";
     }
   }, []);
 
@@ -125,6 +128,9 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
     if (swipeDx.current > 0 && cardRef.current) {
       cardRef.current.style.transform = `translateX(${swipeDx.current}px)`;
       cardRef.current.style.opacity = String(Math.max(0, 1 - swipeDx.current / 300));
+    } else if (cardRef.current) {
+      cardRef.current.style.transform = "translateX(0)";
+      cardRef.current.style.opacity = "1";
     }
   }, []);
 
