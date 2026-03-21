@@ -32,6 +32,7 @@ function StackedRow({ sub, onSelect, onDismiss, unread }) {
   const dx = useRef(0);
 
   const handleTouchStart = useCallback((e) => {
+    if (rowRef.current) rowRef.current.style.transition = "";
     startX.current = e.touches[0].clientX;
     dx.current = 0;
   }, []);
@@ -119,6 +120,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
   }, [showSwipeHint]);
 
   const handleTouchStart = useCallback((e) => {
+    if (cardRef.current) cardRef.current.style.transition = "";
     swipeStart.current = e.touches[0].clientX;
     swipeDx.current = 0;
   }, []);
