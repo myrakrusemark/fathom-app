@@ -17,7 +17,8 @@ import { ATMOSPHERES } from "../data/atmospheres.js";
 
 export default function SettingsModal({ open, onClose, onConnectionChange, isGate, atmosphere, onAtmosphereChange, showBackstage, onShowBackstageChange }) {
   const [tab, setTab] = useState("connection");
-  const [serverUrl, setServerUrl] = useState("");
+  const defaultServerUrl = `${window.location.protocol}//${window.location.hostname}:4243`;
+  const [serverUrl, setServerUrl] = useState(defaultServerUrl);
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -190,7 +191,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
 
   function handleDisconnect() {
     clearConnection();
-    setServerUrl("");
+    setServerUrl(defaultServerUrl);
     setApiKey("");
     setTestResult(null);
     onConnectionChange();

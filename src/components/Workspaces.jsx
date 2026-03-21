@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getWorkspaceProfiles, getRoutines, fireRoutine } from "../api/client.js";
+import { getWorkspaceProfiles, getRoutines, fireRoutine, getBrowserSessions } from "../api/client.js";
 import { RoutineRow } from "./Routines.jsx";
 
 function getProfileStatus(profile) {
@@ -27,7 +27,32 @@ function timeAgo(timestamp) {
   return `${days}d ago`;
 }
 
-function WorkspaceCard({ name, workspace, onSelect, onOpenChat }) {
+function BrowserTabs({ sessions }) {
+  if (!sessions || sessions.length === 0) return null;
+  return (
+    <div className="browser-tabs">
+      {sessions.map((s) => (
+        <a
+          key={s.id}
+          className="browser-tab"
+          href={s.debug_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {s.favicon && <img className="browser-tab-favicon" src={s.favicon} alt="" />}
+          <div className="browser-tab-info">
+            <span className="browser-tab-title">{s.title || "Untitled"}</span>
+            <span className="browser-tab-url">{s.url}</span>
+          </div>
+          <span className="browser-tab-debug">inspect</span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions }) {
   if (workspace.type === "human") return null;
 
   const wsColor = workspace.color || "#888";
@@ -37,35 +62,39 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat }) {
   const hasAgent = workspace.agents && workspace.agents.length > 0;
 
   return (
-    <div className="workspace-card" onClick={() => onSelect(name, workspace)}>
-      <div className="workspace-card-header">
-        <div className="workspace-card-names">
-          <span className="workspace-card-name-row">
-            <span className="workspace-color-dot" style={{ background: wsColor }} />
-            {displayName}
-            {workspace.ssh && <span className="workspace-badge ssh">SSH</span>}
-          </span>
-          <span className="workspace-card-slug">{name}</span>
-        </div>
-        <div className="workspace-card-actions">
-          {hasAgent && onOpenChat && (
-            <button
-              className="workspace-chat-btn"
-              onClick={(e) => { e.stopPropagation(); onOpenChat(name); }}
-              aria-label={`Chat with ${displayName}`}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-              </svg>
-            </button>
-          )}
-          <div className="workspace-status-indicator">
-            <span className={`workspace-status-dot${pulse ? " pulse" : ""}`} style={{ background: statusColor }} />
-            <span className="workspace-status-label">{statusLabel}</span>
+    <div>
+      <div className="workspace-card" onClick={() => onSelect(name, workspace)}>
+        <div className="workspace-card-header">
+          <div className="workspace-card-names">
+            <span className="workspace-card-name-row">
+              <span className="workspace-color-dot" style={{ background: wsColor }} />
+              {displayName}
+              {workspace.ssh && <span className="workspace-badge ssh">SSH</span>}
+              {workspace.browser && <span className="workspace-badge browser">Browser</span>}
+            </span>
+            <span className="workspace-card-slug">{name}</span>
+          </div>
+          <div className="workspace-card-actions">
+            {hasAgent && onOpenChat && (
+              <button
+                className="workspace-chat-btn"
+                onClick={(e) => { e.stopPropagation(); onOpenChat(name); }}
+                aria-label={`Chat with ${displayName}`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+              </button>
+            )}
+            <div className="workspace-status-indicator">
+              <span className={`workspace-status-dot${pulse ? " pulse" : ""}`} style={{ background: statusColor }} />
+              <span className="workspace-status-label">{statusLabel}</span>
+            </div>
           </div>
         </div>
+        {description && <p className="workspace-card-desc">{description}</p>}
       </div>
-      {description && <p className="workspace-card-desc">{description}</p>}
+      {workspace.browser && <BrowserTabs sessions={browserSessions} />}
     </div>
   );
 }
@@ -118,6 +147,7 @@ function WorkspaceDetailPanel({ name, workspace, onClose }) {
                 <span className="workspace-color-dot large" style={{ background: wsColor }} />
                 {displayName}
                 {workspace.ssh && <span className="workspace-badge ssh">SSH</span>}
+                {workspace.browser && <span className="workspace-badge browser">Browser</span>}
               </h2>
               <span className="workspace-detail-slug">{name}</span>
             </div>
@@ -185,6 +215,10 @@ function WorkspaceDetailPanel({ name, workspace, onClose }) {
               <span className="workspace-detail-field-label">WebSocket</span>
               <span className="workspace-detail-field-value">{workspace.connected ? "connected" : "disconnected"}</span>
             </div>
+            <div className="workspace-detail-field">
+              <span className="workspace-detail-field-label">Browser</span>
+              <span className="workspace-detail-field-value">{workspace.browser ? "enabled" : "disabled"}</span>
+            </div>
           </div>
 
           {routines.length > 0 && (
@@ -208,12 +242,18 @@ export default function Workspaces({ onOpenChat }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [browserSessions, setBrowserSessions] = useState([]);
 
   useEffect(() => {
     getWorkspaceProfiles()
       .then((data) => setWorkspaces(data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+    getBrowserSessions().then((data) => setBrowserSessions(data.sessions || [])).catch(() => {});
+    const interval = setInterval(() => {
+      getBrowserSessions().then((data) => setBrowserSessions(data.sessions || [])).catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) return <div className="loading">loading...</div>;
@@ -240,6 +280,7 @@ export default function Workspaces({ onOpenChat }) {
           workspace={ws}
           onSelect={(n, w) => setSelected({ name: n, workspace: w })}
           onOpenChat={onOpenChat}
+          browserSessions={ws.browser ? browserSessions : []}
         />
       ))}
       {selected && (

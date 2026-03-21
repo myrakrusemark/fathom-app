@@ -93,6 +93,12 @@ export function getWorkspaceProfiles() {
   return request("/api/workspaces/profiles");
 }
 
+export function getBrowserSessions() {
+  const conn = getConnection();
+  if (!conn) return Promise.resolve({ sessions: [] });
+  return fetch(`${conn.serverUrl}/api/browser/sessions`).then((r) => r.json());
+}
+
 export function getWeather() {
   return request("/api/weather");
 }
