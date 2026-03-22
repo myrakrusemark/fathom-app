@@ -23,6 +23,10 @@ export function getWorkspace() {
   return conn?.primaryWorkspace || "fathom";
 }
 
+export function getThemes() {
+  return request("/api/themes");
+}
+
 export function getFeed() {
   return request("/api/feed");
 }
@@ -164,10 +168,6 @@ export function sendReaction(workspace, reaction, item) {
   });
 }
 
-export function getSuggestions() {
-  return request("/api/suggestions");
-}
-
 export function getVaultFiles(workspace, limit = 200) {
   return request(`/api/vault/files?workspace=${encodeURIComponent(workspace)}&limit=${limit}`);
 }
@@ -220,6 +220,10 @@ export function uninstallPackage(name) {
   return request(`/api/packages/${encodeURIComponent(name)}/uninstall`, { method: "POST" });
 }
 
+export function provisionMementoKey() {
+  return request("/api/packages/memento/provision", { method: "POST" });
+}
+
 export function saveClaudeCredentials(key, type) {
   return request("/api/packages/claude/credentials", {
     method: "POST",
@@ -240,16 +244,24 @@ export function saveMementoCredentials(key) {
   });
 }
 
-export function provisionMementoKey() {
-  return request("/api/packages/memento/provision", { method: "POST" });
-}
-
 export function deleteMementoCredentials() {
   return request("/api/packages/memento/credentials", { method: "DELETE" });
 }
 
 export function validateClaudeCredentials() {
   return request("/api/packages/claude/validate", { method: "POST" });
+}
+
+export function connectBrowserless(wsEndpoint) {
+  return request("/api/packages/browserless/connect", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ws_endpoint: wsEndpoint }),
+  });
+}
+
+export function disconnectBrowserless() {
+  return request("/api/packages/browserless/connect", { method: "DELETE" });
 }
 
 export function submitOnboarding(name, interests) {

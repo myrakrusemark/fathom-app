@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
-import { getSuggestions, postToRoom } from "../api/client.js";
+import { readRoom, postToRoom } from "../api/client.js";
 import { getHumanUser, getHumanDisplayName } from "../lib/connection.js";
 
-const SCOUT_CURATE_ROUTINE_ID = "scout-curate";
+const DEFAULT_SUGGESTIONS = [
+  { emoji: "📰", title: "Set up a daily news briefing" },
+  { emoji: "📈", title: "Track a stock or market" },
+  { emoji: "🛍️", title: "Find something to buy" },
+  { emoji: "📝", title: "Research a topic for me" },
+  { emoji: "☀️", title: "Set up weather alerts" },
+];
 
 function PlusCircle() {
   return (
@@ -36,13 +42,22 @@ export default function FeedEmpty() {
   const [phase, setPhase] = useState("browse"); // "browse" | "sending" | "confirmed"
 
   useEffect(() => {
-    getSuggestions()
+    // Read latest suggestions from #suggestions room (7 day window)
+    readRoom("suggestions", 10080)
       .then((data) => {
-        if (Array.isArray(data.suggestions)) {
-          setSuggestions(data.suggestions);
+        const messages = data.messages || [];
+        for (let i = messages.length - 1; i >= 0; i--) {
+          try {
+            const parsed = JSON.parse(messages[i].message);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setSuggestions(parsed);
+              return;
+            }
+          } catch { /* not JSON, skip */ }
         }
+        setSuggestions(DEFAULT_SUGGESTIONS);
       })
-      .catch(() => {});
+      .catch(() => setSuggestions(DEFAULT_SUGGESTIONS));
   }, []);
 
   function sendToScout(message) {
