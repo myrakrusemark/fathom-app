@@ -1,9 +1,8 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { isConnected, detectSameOrigin, saveConnection } from "./lib/connection.js";
-import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm } from "./api/client.js";
+import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm, getThemes } from "./api/client.js";
 import Feed from "./components/Feed.jsx";
-import { ATMOSPHERES } from "./data/atmospheres.js";
 import Routines from "./components/Routines.jsx";
 import Backstage from "./components/Backstage.jsx";
 import ChatSheet from "./components/ChatSheet.jsx";
@@ -23,7 +22,9 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [connected, setConnected] = useState(isConnected());
   const [unreadCount, setUnreadCount] = useState(0);
-  const [atmosphere, setAtmosphere] = useState(0);
+  const [themes, setThemes] = useState([]);
+  const [themeName, setThemeName] = useState(() => localStorage.getItem('fathom-theme') || null);
+  const appliedVars = useRef([]);
   const [showBackstage, setShowBackstage] = useState(() => localStorage.getItem('fathom-show-backstage') === 'true');
 
   // Setup phase: "loading" | "packages" | "onboarding" | "done"
@@ -98,20 +99,41 @@ export default function App() {
     init();
   }, []);
 
-  // Apply atmosphere to body globally
+  // Load available themes from server
   useEffect(() => {
-    const a = ATMOSPHERES[atmosphere];
-    document.body.style.background = a.bg;
-    document.body.style.backgroundAttachment = "fixed";
-    document.body.style.color = a.text || "";
-    document.documentElement.style.setProperty("--text", a.text || "#1a1a2e");
-    return () => {
+    if (!connected) return;
+    getThemes().then(setThemes).catch(() => {});
+  }, [connected]);
+
+  // Apply selected theme (or revert to default)
+  useEffect(() => {
+    const theme = themes.find((t) => t.id === themeName);
+    // Clear previously applied overrides
+    for (const prop of appliedVars.current) {
+      document.documentElement.style.removeProperty(prop);
+    }
+    appliedVars.current = [];
+
+    if (!theme) {
       document.body.style.background = "";
       document.body.style.backgroundAttachment = "";
       document.body.style.color = "";
-      document.documentElement.style.setProperty("--text", "#1a1a2e");
-    };
-  }, [atmosphere]);
+      document.documentElement.style.removeProperty("--text");
+      localStorage.removeItem("fathom-theme");
+      return;
+    }
+
+    document.body.style.background = theme.bg;
+    document.body.style.backgroundAttachment = "fixed";
+    document.body.style.color = theme.text || "";
+    document.documentElement.style.setProperty("--text", theme.text || "#1a1a2e");
+    appliedVars.current.push("--text");
+    for (const [prop, val] of Object.entries(theme.variables || {})) {
+      document.documentElement.style.setProperty(prop, val);
+      appliedVars.current.push(prop);
+    }
+    localStorage.setItem("fathom-theme", themeName);
+  }, [themeName, themes]);
 
   const handleConnectionChange = useCallback(() => {
     const nowConnected = isConnected();
@@ -245,8 +267,9 @@ export default function App() {
           onClose={() => setSettingsOpen(false)}
           onConnectionChange={handleConnectionChange}
           isGate={false}
-          atmosphere={atmosphere}
-          onAtmosphereChange={setAtmosphere}
+          themes={themes}
+          selectedTheme={themeName}
+          onThemeChange={setThemeName}
           showBackstage={showBackstage}
           onShowBackstageChange={setShowBackstage}
         />

@@ -98,8 +98,36 @@ function eventToMessages(event, currentWorkspace) {
           out.push({ id, role: "agent", type: "voice", text: block.input.text, duration: 0, audio_url: null, timestamp: ts, memories: 0, _toolId: block.id });
         } else {
           out.push({ id, role: "agent", type: "tool", name: toolName, input: block.input || null, status: "done", timestamp: ts });
-          // DM send — also render the message content as a labeled bubble
-          if (toolName.includes("fathom_send") && block.input?.message && block.input?.workspace) {
+          // DM send via bash script — parse fathom-send.sh or fathom-room-post.sh to dm: room
+          if (toolName === "Bash" && block.input?.command) {
+            const cmd = block.input.command;
+            const quoteArg = `(?:"((?:[^"\\\\]|\\\\.)*)"|'((?:[^'\\\\]|\\\\.)*)'|(\\S+))`;
+            // fathom-send.sh <workspace> <message>
+            const sendMatch = cmd.match(new RegExp(`fathom-send\\.sh\\s+(\\S+)\\s+${quoteArg}`));
+            if (sendMatch) {
+              const dmTarget = sendMatch[1];
+              const dmText = (sendMatch[2] || sendMatch[3] || sendMatch[4] || "").replace(/\\(.)/g, "$1");
+              if (dmTarget && dmText) {
+                out.push({ id: `${id}-dm`, role: "agent", type: "text", text: dmText, timestamp: ts, memories: 0, dmTo: dmTarget });
+              }
+            } else {
+              // fathom-room-post.sh "dm:a+b" <message>
+              const roomPostMatch = cmd.match(new RegExp(`fathom-room-post\\.sh\\s+${quoteArg}\\s+${quoteArg}`));
+              if (roomPostMatch) {
+                const room = (roomPostMatch[1] || roomPostMatch[2] || roomPostMatch[3] || "").replace(/\\(.)/g, "$1");
+                if (room.startsWith("dm:")) {
+                  const dmText = (roomPostMatch[4] || roomPostMatch[5] || roomPostMatch[6] || "").replace(/\\(.)/g, "$1");
+                  const parts = room.slice(3).split("+");
+                  const target = parts.find((p) => p !== currentWorkspace) || parts.join("+");
+                  if (target && dmText) {
+                    out.push({ id: `${id}-dm`, role: "agent", type: "text", text: dmText, timestamp: ts, memories: 0, dmTo: target });
+                  }
+                }
+              }
+            }
+          }
+          // DM send via MCP tool (legacy)
+          else if (toolName.includes("fathom_send") && block.input?.message && block.input?.workspace) {
             out.push({ id: `${id}-dm`, role: "agent", type: "text", text: block.input.message, timestamp: ts, memories: 0, dmTo: block.input.workspace });
           } else if (toolName.includes("room_post") && block.input?.room?.startsWith("dm:") && block.input?.message) {
             const parts = block.input.room.slice(3).split("+");

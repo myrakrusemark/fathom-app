@@ -2367,6 +2367,7 @@ body {
 .settings-modal {
   width: 100%;
   max-width: 400px;
+  max-height: 90vh;
   background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
@@ -2403,10 +2404,12 @@ body {
 }
 
 .settings-body {
-  padding: 0 20px 20px;
+  padding: 0 20px calc(80px + var(--safe-bottom, 0px)) 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
+  max-height: calc(90vh - 60px);
 }
 
 .settings-gate-desc {
