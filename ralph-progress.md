@@ -9,7 +9,7 @@
 | 3. Bug Hunt | DONE |
 | 4. Quality Scaffold | DONE |
 | 5. Test Creation | DONE |
-| 6. Security Review | - |
+| 6. Security Review | DONE |
 | 7. Performance | - |
 | 8. Dependency Audit | - |
 | 9. Cross-Repo Coherence | - |
@@ -23,9 +23,20 @@
 
 ## Next Target
 
-Perspective 6: Security Review / app
+Perspective 7: Performance / app
 
 ## Log
+
+### 2026-03-23 — Perspective 6: Security Review / app
+
+- **XSS prevention**: Added URL protocol allowlist to `inlineMarkdown()` in ChatMessage.jsx — `javascript:` and `data:` hrefs now render as `#`
+- **Missing auth header**: `getBrowserSessions()` was the only fetch in client.js without an Authorization header — fixed
+- **Path encoding**: Added `encodeURIComponent` to `fireRoutine()`, `getVaultFile()`, and `vaultRawUrl()` — consistent with rest of API
+- **Dependency vuln**: Removed unused `vite-plugin-pwa` (5 high-severity vulns). `npm audit fix` cleared 1 remaining in flatted
+- **CSP**: Added Content-Security-Policy meta tag to index.html — blocks inline script injection, restricts font/connect sources
+- **authUrl consolidation**: Removed 3 duplicate `authUrl()` definitions (ChatMessage, FeedDetailPanel, FeedItem); single canonical export in formatters.js
+
+
 
 ### 2026-03-23 — Perspectives 2-5 + Pre-commit Hooks / app
 

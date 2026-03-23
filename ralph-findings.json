@@ -1,11 +1,11 @@
 {
   "version": 1,
   "summary": {
-    "total_lines_removed": 337,
-    "total_lines_added": 231,
-    "total_bugs_fixed": 4,
+    "total_lines_removed": 362,
+    "total_lines_added": 250,
+    "total_bugs_fixed": 8,
     "total_tests_added": 37,
-    "iterations_completed": 5,
+    "iterations_completed": 6,
     "repos_cleaned": ["app"]
   },
   "findings": [
@@ -58,12 +58,20 @@
       "files_changed": 6,
       "lines_added": 1893,
       "lines_removed": 126
+    },
+    {
+      "date": "2026-03-23",
+      "perspective": "Security Review",
+      "repo": "app",
+      "description": "4 security fixes: XSS via markdown link href validation; getBrowserSessions missing auth header; encodeURIComponent on fireRoutine/getVaultFile/vaultRawUrl path params; removed vite-plugin-pwa (5 high vulns); added CSP meta tag; consolidated authUrl into formatters.js",
+      "type": "security",
+      "files_changed": 6,
+      "lines_added": 19,
+      "lines_removed": 16
     }
   ],
   "consolidation_targets": {
-    "done": ["timeAgo", "prettyName", "stripChatDecorations", "formatTimestamp", "timeUntil"],
-    "remaining": {
-      "authUrl": "Defined in FeedItem.jsx and FeedDetailPanel.jsx — minor duplication, low priority"
-    }
+    "done": ["timeAgo", "prettyName", "stripChatDecorations", "formatTimestamp", "timeUntil", "authUrl"],
+    "remaining": {}
   }
 }
