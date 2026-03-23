@@ -34,6 +34,13 @@ No test framework is configured.
 - `Backstage.jsx` contains tab components: `Routines`, `Workspaces`, `Comms`, `Vault`
 - `SettingsModal.jsx` handles connection setup, packages, Claude auth, atmosphere selection
 - `Onboarding.jsx` runs name input → interest selection → workspace/routine creation
+- `AudioPlayerBar.jsx` is a persistent bottom bar for audio playback, powered by `AudioPlayerContext` (`src/contexts/`)
+- `WallpaperPanel.jsx` handles wallpaper/background selection in settings
+- `PermissionToasts.jsx` shows permission request toasts from the server
+
+**Lib utilities** (`src/lib/`):
+- `connection.js`: `getConnection()`, `saveConnection()`, `isConnected()`, `detectSameOrigin()` — encapsulates all `fathom_connection` localStorage access; prefer these over direct localStorage reads
+- `sanitize.js`: rehype-sanitize schema for safe HTML rendering in feed cards
 
 **Styling** (`src/styles/app.css`): Glass morphism design system using CSS variables (`--bg-card`, `--glass-blur`, `--accent`, `--radius`). Mobile-first with safe-area-inset support. Eight atmosphere themes defined in `src/data/atmospheres.js`.
 

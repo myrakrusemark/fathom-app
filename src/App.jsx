@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { isConnected, detectSameOrigin, saveConnection } from "./lib/connection.js";
+import { isConnected, detectSameOrigin, saveConnection, getConnection } from "./lib/connection.js";
 import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm, getThemes, readRoom } from "./api/client.js";
 import Feed from "./components/Feed.jsx";
 import Routines from "./components/Routines.jsx";
@@ -229,9 +229,17 @@ export default function App() {
   }
 
   function handleOnboardComplete(name, interests) {
-    // Submit to server — creates workspaces/routines and posts welcome to feed
+    // Submit to server — DMs fathom with user intro and posts welcome to feed
     submitOnboarding(name, interests)
-      .then(() => setTimeout(() => setFeedKey((k) => k + 1), 2000))
+      .then(() => {
+        // Update connection with the user's identity so DM rooms resolve correctly
+        const conn = getConnection();
+        if (conn && name) {
+          const humanUser = name.toLowerCase().replace(/\s+/g, "-");
+          saveConnection({ ...conn, humanUser, humanDisplayName: name });
+        }
+        setTimeout(() => setFeedKey((k) => k + 1), 2000);
+      })
       .catch(console.error);
     setCompleting(true);
   }

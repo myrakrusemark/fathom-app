@@ -166,7 +166,7 @@ function ConversationStep({ name, onNext }) {
                     onClick={() => toggle(opt.id)}
                     disabled={isSavingOrDone}
                   >
-                    <span className="onboard-chip-icon">{typeof opt.icon === 'function' ? (() => { const Icon = opt.icon; return <Icon size={16} />; })() : opt.icon}</span>
+                    <span className="onboard-chip-icon">{(() => { const Icon = opt.icon; return <Icon size={16} />; })()}</span>
                     <span className="onboard-chip-label">{opt.label}</span>
                   </button>
                 ))}
