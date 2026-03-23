@@ -18,12 +18,12 @@
 | 12. Accessibility | DONE |
 | 13. Error Boundary Audit | DONE |
 | 14. Utility Consolidation | DONE |
-| 15. New Perspectives | - |
+| 15. New Perspectives | DONE |
 | 16–25. UX Perspectives | - |
 
 ## Next Target
 
-Perspective 15: New Perspectives / app
+Perspective 16: Feed Experience (UX proposals) / app
 
 ## Deferred Upgrades
 
@@ -33,6 +33,26 @@ Perspective 15: New Perspectives / app
 | `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | Tied to Vite — upgrade together with Vite 8 |
 
 ## Log
+
+### 2026-03-23 — Perspective 15: New Perspectives / app
+
+Research: React 19 + React Router 7 + Vite 6 + PWA-specific audit angles.
+
+**Bug fixed: WebSocket proxy missing in Vite dev**
+`detectSameOrigin()` sets `serverUrl=window.location.origin` (localhost:5173 in dev). `getWsUrl()` then builds `ws://localhost:5173/ws/...`. The Vite proxy only covered `/api` — added `"/ws": { target: "ws://localhost:4243", ws: true }` to fix WebSocket chat in same-origin dev mode.
+
+**PWA manifest improvements**
+- Added `scope: "/"` and `prefer_related_applications: false`
+- Added `purpose: "any"` to icon entry
+- Fixed `theme-color` mismatch: index.html had `#eeeef3` (light) vs manifest `#0a0a0f` (dark)
+
+**formatSize consolidation**
+Discovered `formatSize()` duplicated identically in ChatMessage.jsx and FeedDetailPanel.jsx. Moved to formatters.js; updated 3 importers.
+
+**Verified clean:**
+- No `React.lazy()` or `dangerouslySetInnerHTML` usage
+- React Router `react-router-dom` imports are consistent (correct for browser app with BrowserRouter)
+- No `useFormStatus`/`useActionState` mixing with WebSocket
 
 ### 2026-03-23 — Perspective 14: Utility Consolidation / app
 
