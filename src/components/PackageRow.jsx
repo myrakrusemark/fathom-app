@@ -35,12 +35,17 @@ export default function PackageRow({ pkg, onReload, showLogo = false }) {
   const [blConnecting, setBlConnecting] = useState(false);
   const [blError, setBlError] = useState("");
 
+  // Install/uninstall error
+  const [pkgError, setPkgError] = useState("");
+
   async function handleInstall() {
-    try { await installPackage(pkg.name); onReload(); } catch { /* silent */ }
+    setPkgError("");
+    try { await installPackage(pkg.name); onReload(); } catch (err) { setPkgError(err.message || "Install failed"); }
   }
 
   async function handleUninstall() {
-    try { await uninstallPackage(pkg.name); onReload(); } catch { /* silent */ }
+    setPkgError("");
+    try { await uninstallPackage(pkg.name); onReload(); } catch (err) { setPkgError(err.message || "Uninstall failed"); }
   }
 
   const desc = PKG_DESCRIPTIONS[pkg.name];
@@ -98,6 +103,8 @@ export default function PackageRow({ pkg, onReload, showLogo = false }) {
           )}
         </div>
       </div>
+
+      {pkgError && <p className="settings-claude-auth-error">{pkgError}</p>}
 
       {/* Package description */}
       {desc && (

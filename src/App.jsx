@@ -232,7 +232,7 @@ export default function App() {
     // Submit to server — creates workspaces/routines and posts welcome to feed
     submitOnboarding(name, interests)
       .then(() => setTimeout(() => setFeedKey((k) => k + 1), 2000))
-      .catch(() => {});
+      .catch(console.error);
     setCompleting(true);
   }
 
