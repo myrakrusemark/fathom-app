@@ -144,7 +144,7 @@ export default function Vault() {
   useEffect(() => {
     getWorkspaceProfiles()
       .then((data) => {
-        const entries = Object.entries(data.workspaces || data.profiles || data)
+        const entries = Object.entries(data.profiles || {})
           .filter(([, v]) => typeof v === "object" && v.type !== "human")
           .map(([name]) => name);
         setWorkspaces(entries);

@@ -250,7 +250,7 @@ export default function Workspaces({ onOpenChat }) {
 
   const defaultWorkspace = workspaces?.default_workspace;
   const entries = workspaces
-    ? Object.entries(workspaces.workspaces || workspaces.profiles || workspaces)
+    ? Object.entries(workspaces.profiles || {})
         .filter(([, v]) => typeof v === "object" && v.type !== "human")
     : [];
 

@@ -37,7 +37,7 @@ export default function PermissionToasts() {
   useEffect(() => {
     getWorkspaceProfiles()
       .then((data) => {
-        const profiles = data.profiles || data;
+        const profiles = data.profiles || {};
         const colors = {};
         for (const [name, info] of Object.entries(profiles)) {
           if (info?.color) colors[name] = info.color;

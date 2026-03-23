@@ -91,11 +91,7 @@ export function getWorkspaceProfiles() {
 }
 
 export function getBrowserSessions() {
-  const conn = getConnection();
-  if (!conn) return Promise.resolve({ sessions: [] });
-  return fetch(`${conn.serverUrl}/api/browser/sessions`, {
-    headers: { Authorization: `Bearer ${conn.apiKey}` },
-  }).then((r) => r.json());
+  return request("/api/browser/sessions").catch(() => ({ sessions: [] }));
 }
 
 export function postToRoom(roomName, message, sender = null) {
@@ -133,7 +129,7 @@ export function getDmUnreadCount() {
   const human = getHumanUser();
   const dmRoom = getDmRoomName();
   return listRooms(human).then((data) => {
-    const rooms = data.rooms || data || [];
+    const rooms = data.rooms || [];
     const dm = rooms.find((r) => r.name === dmRoom);
     return dm?.unread_count || 0;
   });
