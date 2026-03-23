@@ -29,6 +29,8 @@ function RoutineDetailPanel({ routine, onClose, onFire }) {
     setFiring(true);
     try {
       await onFire(routine.id);
+    } catch (err) {
+      console.error(err);
     } finally {
       setFiring(false);
     }
@@ -181,6 +183,8 @@ export function RoutineRow({ routine, onFire, onSelect }) {
     setFiring(true);
     try {
       await onFire(routine.id);
+    } catch (err) {
+      console.error(err);
     } finally {
       setFiring(false);
     }

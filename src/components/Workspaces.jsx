@@ -107,10 +107,14 @@ function WorkspaceDetailPanel({ name, workspace, onClose, isPrimary }) {
   }
 
   async function handleFire(id) {
-    await fireRoutine(id);
-    const data = await getRoutines();
-    const all = [...(data.recent || []), ...(data.upcoming || []), ...(data.disabled || [])];
-    setRoutines(all.filter((r) => r.workspace === name));
+    try {
+      await fireRoutine(id);
+      const data = await getRoutines();
+      const all = [...(data.recent || []), ...(data.upcoming || []), ...(data.disabled || [])];
+      setRoutines(all.filter((r) => r.workspace === name));
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   const wsColor = workspace.color || "#888";
