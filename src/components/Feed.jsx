@@ -51,7 +51,14 @@ export default function Feed({
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [unreadThreads, setUnreadThreads] = useState(new Set());
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const localDismissedRef = useRef(new Set());
+  const pageRef = useRef(null);
+  const pullDistanceRef = useRef(0);
+  const pullStartYRef = useRef(0);
+  const isPullingRef = useRef(false);
 
   const handleDismiss = useCallback((itemId) => {
     // Track locally so poll can't overwrite with stale server data
@@ -96,34 +103,32 @@ export default function Feed({
   // Stack computation — only recompute when newItems changes (not on every Feed render)
   const stackedNewItems = useMemo(() => stackByWorkspace(newItems), [newItems]);
 
-  // Fetch feed data, poll every 30s
-  useEffect(() => {
-    let cancelled = false;
-    let first = true;
-    function fetchFeed() {
-      if (first) { setLoading(true); first = false; }
-      getFeed()
-        .then((data) => {
-          if (!cancelled) {
-            // Merge server data with local dismissals to prevent stale
-            // poll responses from overwriting optimistic dismiss state
-            const items = (data.items || []).map((item) =>
-              localDismissedRef.current.has(item.id)
-                ? { ...item, dismissed: true }
-                : item
-            );
-            setAllItems(items);
-          }
-        })
-        .catch(console.error)
-        .finally(() => { if (!cancelled) setLoading(false); });
-    }
-    fetchFeed();
-    const interval = setInterval(fetchFeed, 30_000);
-    return () => { cancelled = true; clearInterval(interval); };
+  // Fetch feed — extracted so pull-to-refresh can call it directly
+  const fetchFeed = useCallback(() => {
+    return getFeed()
+      .then((data) => {
+        // Merge server data with local dismissals to prevent stale
+        // poll responses from overwriting optimistic dismiss state
+        const items = (data.items || []).map((item) =>
+          localDismissedRef.current.has(item.id)
+            ? { ...item, dismissed: true }
+            : item
+        );
+        setAllItems(items);
+        setInitialLoadDone(true);
+      })
+      .catch(console.error);
   }, []);
 
-  // Poll room list for unread thread indicators
+  // Initial fetch + 30s background poll
+  useEffect(() => {
+    let cancelled = false;
+    fetchFeed().finally(() => { if (!cancelled) setLoading(false); });
+    const interval = setInterval(() => { if (!cancelled) fetchFeed(); }, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [fetchFeed]);
+
+  // Poll room list for unread thread indicators — 5s for near-realtime
   useEffect(() => {
     let cancelled = false;
     function fetchRooms() {
@@ -146,9 +151,55 @@ export default function Feed({
         .catch(() => {});
     }
     fetchRooms();
-    const interval = setInterval(fetchRooms, 30_000);
+    const interval = setInterval(fetchRooms, 5_000);
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
+
+  // Pull-to-refresh: attach non-passive touchmove to page element
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page) return;
+
+    function onTouchStart(e) {
+      if (page.scrollTop === 0) {
+        pullStartYRef.current = e.touches[0].clientY;
+        isPullingRef.current = true;
+      }
+    }
+
+    function onTouchMove(e) {
+      if (!isPullingRef.current) return;
+      const dy = e.touches[0].clientY - pullStartYRef.current;
+      if (dy > 0) {
+        e.preventDefault();
+        const clamped = Math.min(dy * 0.5, 60); // dampen + cap at 60px
+        pullDistanceRef.current = clamped;
+        setPullDistance(clamped);
+      }
+    }
+
+    function onTouchEnd() {
+      if (!isPullingRef.current) return;
+      isPullingRef.current = false;
+      if (pullDistanceRef.current >= 50) {
+        setIsRefreshing(true);
+        setPullDistance(0);
+        fetchFeed().finally(() => setIsRefreshing(false));
+      } else {
+        setPullDistance(0);
+      }
+      pullDistanceRef.current = 0;
+    }
+
+    page.addEventListener("touchstart", onTouchStart, { passive: true });
+    page.addEventListener("touchmove", onTouchMove, { passive: false });
+    page.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      page.removeEventListener("touchstart", onTouchStart);
+      page.removeEventListener("touchmove", onTouchMove);
+      page.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [fetchFeed]);
 
   if (loading) {
     return (
@@ -156,13 +207,22 @@ export default function Feed({
         <header className="page-header">
           <h1>fathom</h1>
         </header>
-        <div className="loading">loading...</div>
+        <div className="feed">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="feed-item feed-item-skeleton" aria-hidden="true">
+              <div className="skeleton-title" />
+              <div className="skeleton-body" />
+              <div className="skeleton-body skeleton-body-short" />
+              <div className="skeleton-footer" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="page">
+    <div className="page" ref={pageRef}>
       <header className="page-header">
         <h1>fathom</h1>
         <span className="header-subtitle">updates</span>
@@ -175,6 +235,12 @@ export default function Feed({
       </header>
 
       <>
+          {(pullDistance > 0 || isRefreshing) && (
+            <div className="feed-pull-indicator" style={{ height: `${pullDistance}px` }}>
+              <div className={`feed-pull-spinner${isRefreshing ? " spinning" : ""}`} />
+            </div>
+          )}
+
           {unreadCount > 0 && (
             <div className="feed-unread-banner" role="button" tabIndex={0} onClick={onChatOpen} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onChatOpen()}>
               <MessageCircle size={16} />
@@ -183,7 +249,7 @@ export default function Feed({
           )}
 
           <div className="feed">
-            {newItems.length === 0 && <FeedEmpty />}
+            {initialLoadDone && newItems.length === 0 && <FeedEmpty />}
             {stackedNewItems.map((entry, index) =>
               entry.stacked ? (
                 <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} unreadThreads={unreadThreads}onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />
