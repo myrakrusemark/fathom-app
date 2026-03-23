@@ -176,20 +176,14 @@ export default function App() {
 
   const prevWallpaperId = useRef(null);
 
-  // Apply wallpaper to body; auto-apply theme if wallpaper specifies one
+  // Auto-apply theme when a new wallpaper specifies one.
+  // backgroundImage is already applied by the theme effect above (which re-runs on wallpaper change).
   useEffect(() => {
-    if (!wallpaper?.url) return;
-    document.body.style.backgroundImage = `url(${wallpaper.url})`;
-    document.body.style.backgroundSize = "cover";
-    document.body.style.backgroundPosition = "center";
-    document.body.style.backgroundAttachment = "fixed";
-
-    if (wallpaper.id !== prevWallpaperId.current) {
-      prevWallpaperId.current = wallpaper.id;
-      if ('theme' in wallpaper) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- deriving themeName from wallpaper prop on change is intentional; avoids extra state field
-        setThemeName(wallpaper.theme ?? null);
-      }
+    if (!wallpaper?.url || wallpaper.id === prevWallpaperId.current) return;
+    prevWallpaperId.current = wallpaper.id;
+    if ('theme' in wallpaper) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deriving themeName from wallpaper prop on change is intentional; avoids extra state field
+      setThemeName(wallpaper.theme ?? null);
     }
   }, [wallpaper]);
 
