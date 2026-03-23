@@ -44,7 +44,7 @@ export function getRoutines() {
 }
 
 export function fireRoutine(id) {
-  return request(`/api/routines/${id}/fire`);
+  return request(`/api/routines/${encodeURIComponent(id)}/fire`);
 }
 
 
@@ -97,7 +97,9 @@ export function getWorkspaceProfiles() {
 export function getBrowserSessions() {
   const conn = getConnection();
   if (!conn) return Promise.resolve({ sessions: [] });
-  return fetch(`${conn.serverUrl}/api/browser/sessions`).then((r) => r.json());
+  return fetch(`${conn.serverUrl}/api/browser/sessions`, {
+    headers: { Authorization: `Bearer ${conn.apiKey}` },
+  }).then((r) => r.json());
 }
 
 export function getWeather() {
@@ -170,7 +172,7 @@ export function getVaultFiles(workspace, limit = 200) {
 }
 
 export function getVaultFile(filePath, workspace) {
-  return request(`/api/vault/file/${filePath}?workspace=${encodeURIComponent(workspace)}`);
+  return request(`/api/vault/file/${encodeURIComponent(filePath)}?workspace=${encodeURIComponent(workspace)}`);
 }
 
 export function searchVault(query, workspace) {
