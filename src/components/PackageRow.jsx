@@ -3,8 +3,6 @@ import {
   installPackage,
   uninstallPackage,
   provisionMementoKey,
-  saveClaudeCredentials,
-  deleteClaudeCredentials,
   saveMementoCredentials,
   deleteMementoCredentials,
   connectBrowserless,
@@ -12,19 +10,13 @@ import {
 } from "../api/client.js";
 
 const PKG_DESCRIPTIONS = {
-  claude: "Your workspaces can't run without this. Install it, then authenticate to connect your credentials.",
+  claude: "Your workspaces can't run without this. Configure credentials in docker-compose.yml to authenticate.",
   memento: null, // handled inline with logo
   tts: "One tap to install. Gives your agent a voice for replies, notifications, and podcasts.",
   browserless: "Headless Chrome for web browsing. Set browser: true in workspaces.json to enable per-workspace.",
 };
 
 export default function PackageRow({ pkg, onReload, showLogo = false }) {
-  // Claude auth state
-  const [claudeAuthMode, setClaudeAuthMode] = useState(null);
-  const [claudeCredential, setClaudeCredential] = useState("");
-  const [claudeCredSaving, setClaudeCredSaving] = useState(false);
-  const [claudeCredError, setClaudeCredError] = useState("");
-
   // Memento provisioning state
   const [mementoProvKey, setMementoProvKey] = useState(null);
   const [mementoProvisioning, setMementoProvisioning] = useState(false);
@@ -34,6 +26,9 @@ export default function PackageRow({ pkg, onReload, showLogo = false }) {
   const [mementoManualKey, setMementoManualKey] = useState("");
   const [mementoSaving, setMementoSaving] = useState(false);
   const [mementoError, setMementoError] = useState("");
+
+  // Claude info expand state
+  const [claudeInfoOpen, setClaudeInfoOpen] = useState(false);
 
   // Browserless connection state
   const [blEndpoint, setBlEndpoint] = useState("");
@@ -315,7 +310,7 @@ export default function PackageRow({ pkg, onReload, showLogo = false }) {
       )}
 
       {/* Claude auth — authenticated */}
-      {pkg.name === "claude" && pkg.status === "installed" && pkg.authenticated === true && !claudeAuthMode && (
+      {pkg.name === "claude" && pkg.status === "installed" && pkg.authenticated === true && (
         <div className="settings-claude-auth authenticated">
           <span className="settings-claude-auth-label">
             Authenticated
@@ -324,117 +319,49 @@ export default function PackageRow({ pkg, onReload, showLogo = false }) {
             </span>
           </span>
           <span className="settings-claude-auth-actions">
-            <button onClick={() => setClaudeAuthMode("change")}>Change</button>
-            <span className="sep">|</span>
-            <button
-              className="danger"
-              onClick={async () => {
-                if (!confirm("Remove Claude Code credentials?")) return;
-                try { await deleteClaudeCredentials(); onReload(); } catch { /* silent */ }
-              }}
-            >
-              Remove
+            <button onClick={() => setClaudeInfoOpen(o => !o)}>
+              {claudeInfoOpen ? "Less" : "More info"}
             </button>
           </span>
         </div>
       )}
 
-      {/* Claude auth — invalid credentials */}
-      {pkg.name === "claude" && pkg.status === "installed" && pkg.authenticated === false && pkg.auth_error && !claudeAuthMode && (
-        <div className="settings-claude-auth invalid">
-          <span className="settings-claude-auth-label">
-            <span className="settings-claude-auth-error">{pkg.auth_error}</span>
-            {pkg.auth_method && (
-              <span className="settings-claude-auth-method">
-                via {pkg.auth_method === "api-key" ? "API key" : pkg.auth_method === "credentials-file" ? "credentials file" : "OAuth token"}
-              </span>
-            )}
-          </span>
-          <span className="settings-claude-auth-actions">
-            <button onClick={() => setClaudeAuthMode("change")}>Change</button>
-            <span className="sep">|</span>
-            <button
-              className="danger"
-              onClick={async () => {
-                if (!confirm("Remove Claude Code credentials?")) return;
-                try { await deleteClaudeCredentials(); onReload(); } catch { /* silent */ }
-              }}
-            >
-              Remove
-            </button>
-          </span>
-        </div>
-      )}
-
-      {/* Claude auth — not authenticated or changing */}
-      {pkg.name === "claude" && pkg.status === "installed" && ((pkg.authenticated === false && !pkg.auth_error) || claudeAuthMode === "change") && (
+      {/* Claude auth — not authenticated */}
+      {pkg.name === "claude" && pkg.status === "installed" && pkg.authenticated === false && (
         <div className="settings-claude-auth unauthenticated">
-          {pkg.authenticated === false && !pkg.auth_error && <p className="settings-claude-auth-warning">Not authenticated</p>}
-          {claudeAuthMode === "change" && <p className="settings-claude-auth-warning" style={{ color: "var(--text-secondary)" }}>Change credentials</p>}
+          {pkg.auth_error && <p className="settings-claude-auth-warning">{pkg.auth_error}</p>}
+          <button
+            className="settings-claude-auth-back"
+            style={{ marginBottom: "0.25rem" }}
+            onClick={() => setClaudeInfoOpen(o => !o)}
+          >
+            {claudeInfoOpen ? "▲ Hide" : "▼ How to configure"}
+          </button>
+        </div>
+      )}
 
-          {(!claudeAuthMode || claudeAuthMode === "change") && (
-            <div className="settings-claude-auth-options">
-              <button className="settings-claude-auth-opt" onClick={() => setClaudeAuthMode("credentials-file")}>
-                <span>Credentials file</span>
-                <span className="hint">auto-refreshed via Claude Code login</span>
-              </button>
-              <button className="settings-claude-auth-opt" onClick={() => setClaudeAuthMode("api-key")}>
-                <span>API key</span>
-                <span className="hint">pay-per-token billing</span>
-              </button>
-            </div>
-          )}
-
-          {claudeAuthMode && claudeAuthMode !== "change" && (
-            <div className="settings-claude-auth-input">
-              {claudeAuthMode === "credentials-file" && (
-                <p className="settings-claude-auth-help">
-                  Add this bind-mount to your <code style={{ cursor: "auto" }}>docker-compose.yml</code> volumes:
-                  <code
-                    onClick={(e) => { navigator.clipboard.writeText(e.target.textContent); }}
-                  >~/.claude/.credentials.json:/data/claude/.credentials.json:ro</code>
-                  Then restart the container. The token refreshes automatically when you run <code style={{ cursor: "auto" }}>claude login</code> on the host.
-                </p>
-              )}
-              {claudeAuthMode === "api-key" && (<>
-              <div className="settings-claude-auth-form">
-                <input
-                  type="password"
-                  placeholder="sk-ant-..."
-                  value={claudeCredential}
-                  onChange={(e) => { setClaudeCredential(e.target.value); setClaudeCredError(""); }}
-                />
-                <button
-                  disabled={!claudeCredential || claudeCredSaving}
-                  onClick={async () => {
-                    setClaudeCredSaving(true);
-                    setClaudeCredError("");
-                    try {
-                      const res = await saveClaudeCredentials(claudeCredential, claudeAuthMode);
-                      if (res.error) { setClaudeCredError(res.error); return; }
-                      setClaudeCredential("");
-                      setClaudeAuthMode(null);
-                      onReload();
-                    } catch {
-                      setClaudeCredError("Failed to save");
-                    } finally {
-                      setClaudeCredSaving(false);
-                    }
-                  }}
-                >
-                  {claudeCredSaving ? "..." : "Save"}
-                </button>
-              </div>
-              {claudeCredError && <p className="settings-claude-auth-error">{claudeCredError}</p>}
-              </>)}
-              <button
-                className="settings-claude-auth-back"
-                onClick={() => { setClaudeAuthMode(null); setClaudeCredential(""); setClaudeCredError(""); }}
-              >
-                ← back
-              </button>
-            </div>
-          )}
+      {/* Claude auth — expanded info (shown in both states) */}
+      {pkg.name === "claude" && pkg.status === "installed" && claudeInfoOpen && (
+        <div style={{ fontSize: "0.85rem", padding: "0.5rem 0 0.25rem" }}>
+          <p style={{ margin: "0 0 0.4rem", opacity: 0.7 }}>
+            Configure one of the following in your <code style={{ cursor: "auto" }}>docker-compose.yml</code> and restart the container. The first one found is used.
+          </p>
+          <ol style={{ margin: "0 0 0 1rem", paddingLeft: "0.5rem", lineHeight: 1.9, opacity: 0.6 }}>
+            <li>
+              <strong>Credentials file</strong> — bind-mount your host login session (auto-refreshed when you run <code style={{ cursor: "auto" }}>claude login</code>):<br />
+              <code
+                style={{ cursor: "pointer", display: "inline-block", marginTop: "0.2rem" }}
+                onClick={(e) => navigator.clipboard.writeText(e.target.textContent)}
+                title="Click to copy"
+              >~/.claude/.credentials.json:/data/claude/.credentials.json:ro</code>
+            </li>
+            <li>
+              <strong>CLAUDE_CODE_OAUTH_TOKEN</strong> — OAuth token as an environment variable
+            </li>
+            <li>
+              <strong>ANTHROPIC_API_KEY</strong> — API key as an environment variable
+            </li>
+          </ol>
         </div>
       )}
     </div>

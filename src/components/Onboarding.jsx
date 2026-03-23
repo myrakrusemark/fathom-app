@@ -1,19 +1,20 @@
 import { useState, useEffect, useRef } from "react";
+import { Send, Newspaper, TrendingUp, Microscope, ShoppingBag, Briefcase, CloudSun, Calendar, Heart, UtensilsCrossed, Plane, BookOpen, Home } from "lucide-react";
 import ThoughtBubble from "./ThoughtBubble.jsx";
 
 const INTEREST_OPTIONS = [
-  { id: "news", label: "News & current events", icon: "📰" },
-  { id: "finance", label: "Markets & finance", icon: "📈" },
-  { id: "research", label: "Research & papers", icon: "🔬" },
-  { id: "shopping", label: "Shopping & deals", icon: "🛍" },
-  { id: "jobs", label: "Job search", icon: "💼" },
-  { id: "weather", label: "Weather & alerts", icon: "🌤" },
-  { id: "calendar", label: "Calendar & reminders", icon: "📅" },
-  { id: "health", label: "Health & wellness", icon: "🧘" },
-  { id: "cooking", label: "Cooking & recipes", icon: "🍳" },
-  { id: "travel", label: "Travel planning", icon: "✈️" },
-  { id: "learning", label: "Learning & courses", icon: "📚" },
-  { id: "home", label: "Home & errands", icon: "🏠" },
+  { id: "news", label: "News & current events", icon: Newspaper },
+  { id: "finance", label: "Markets & finance", icon: TrendingUp },
+  { id: "research", label: "Research & papers", icon: Microscope },
+  { id: "shopping", label: "Shopping & deals", icon: ShoppingBag },
+  { id: "jobs", label: "Job search", icon: Briefcase },
+  { id: "weather", label: "Weather & alerts", icon: CloudSun },
+  { id: "calendar", label: "Calendar & reminders", icon: Calendar },
+  { id: "health", label: "Health & wellness", icon: Heart },
+  { id: "cooking", label: "Cooking & recipes", icon: UtensilsCrossed },
+  { id: "travel", label: "Travel planning", icon: Plane },
+  { id: "learning", label: "Learning & courses", icon: BookOpen },
+  { id: "home", label: "Home & errands", icon: Home },
 ];
 
 const ThoughtBubbleSvg = ThoughtBubble;
@@ -47,9 +48,7 @@ function LoginStep({ onNext }) {
           className="onboard-send-btn"
           disabled={!name.trim()}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-          </svg>
+          <Send size={18} />
         </button>
       </form>
     </div>
@@ -167,7 +166,7 @@ function ConversationStep({ name, onNext }) {
                     onClick={() => toggle(opt.id)}
                     disabled={isSavingOrDone}
                   >
-                    <span className="onboard-chip-icon">{opt.icon}</span>
+                    <span className="onboard-chip-icon">{typeof opt.icon === 'function' ? (() => { const Icon = opt.icon; return <Icon size={16} />; })() : opt.icon}</span>
                     <span className="onboard-chip-label">{opt.label}</span>
                   </button>
                 ))}

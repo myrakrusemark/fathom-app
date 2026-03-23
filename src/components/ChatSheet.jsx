@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { X, Paperclip, Send } from "lucide-react";
 import { getWsUrl, getWorkspace, sendMessage, uploadAttachment, sendDm, pollDmRoom } from "../api/client.js";
 import { getHumanUser } from "../lib/connection.js";
 import ChatMessage, { ToolGroup, formatSize } from "./ChatMessage.jsx";
@@ -35,13 +36,18 @@ function roomMsgToChatMsg(msg) {
       ? JSON.parse(msg.metadata)
       : msg.metadata
     : {};
+  const isVoice = meta.type === "voice";
   return {
     id: `dm-${msg.id}`,
     role: msg.sender === human ? "user" : "agent",
-    type: "text",
+    type: isVoice ? "voice" : "text",
     text: msg.message,
     timestamp: msg.timestamp,
     memories: meta.memories || 0,
+    ...(isVoice && {
+      audio_url: meta.audio_url || null,
+      duration: meta.duration || 0,
+    }),
   };
 }
 
@@ -86,7 +92,7 @@ function eventToMessages(event, currentWorkspace) {
       const id = `ws-${seq}-${i}`;
       if ((block.type === "text" || (!block.type && block.text)) && block.text) {
         // <...> is active silence — render as presence indicator, not text
-        if (block.text.trim() === "<...>") {
+        if (/^<\s*\.\.\.\s*>$/.test(block.text.trim())) {
           out.push({ id, role: "agent", type: "presence", timestamp: ts });
           continue;
         }
@@ -739,9 +745,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
             )}
           </span>
           <button className="chat-sheet-close" onClick={onClose}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-              <path d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X size={20} />
           </button>
         </div>
         <div className="chat-sheet-messages">
@@ -813,9 +817,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
                 onClick={() => fileInputRef.current?.click()}
                 disabled={sending}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                </svg>
+                <Paperclip size={20} />
               </button>
             )}
             <input
@@ -828,9 +830,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
               autoComplete="off"
             />
             <button type="submit" disabled={!input.trim() || sending}>
-              <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-              </svg>
+              <Send size={20} fill="currentColor" />
             </button>
           </div>
         </form>

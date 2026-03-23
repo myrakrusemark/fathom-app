@@ -1,25 +1,17 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { CloudSun, Cloud, MessageCircle, ChevronDown, Image } from "lucide-react";
 import { getFeed, getWeather, listRooms, dismissFeedItem, fireRoutine } from "../api/client.js";
 import { getHumanUser } from "../lib/connection.js";
 import FeedItem from "./FeedItem.jsx";
 import FeedDetailPanel from "./FeedDetailPanel.jsx";
 import FeedEmpty from "./FeedEmpty.jsx";
+import WallpaperPanel from "./WallpaperPanel.jsx";
 
 function WeatherIcon({ icon }) {
   if (icon === "cloud-sun") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
-        <path d="M12 3v1m0 16v1m8.66-13.66l-.71.71M4.05 19.95l-.71.71M21 12h-1M4 12H3m16.66 7.66l-.71-.71M4.05 4.05l-.71-.71" />
-        <circle cx="12" cy="12" r="4" />
-        <path d="M17.5 17a4.5 4.5 0 00-8.94-.5A3 3 0 006 19.5h11a2.5 2.5 0 00.5-5z" fill="rgba(255,255,255,0.4)" stroke="currentColor" />
-      </svg>
-    );
+    return <CloudSun size={18} strokeWidth={1.5} />;
   }
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
-      <path d="M19 16.9A5 5 0 0018 7h-1.26a8 8 0 10-11.62 9" />
-    </svg>
-  );
+  return <Cloud size={18} strokeWidth={1.5} />;
 }
 
 function stackByWorkspace(items) {
@@ -57,8 +49,8 @@ function stackByWorkspace(items) {
 
 export default function Feed({
   onChatOpen,
-  onStartTour,
   unreadCount = 0,
+  wallpaper = null,
 }) {
   const [allItems, setAllItems] = useState([]);
   const [earlierOpen, setEarlierOpen] = useState(false);
@@ -66,14 +58,18 @@ export default function Feed({
   const [loading, setLoading] = useState(true);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [unreadThreads, setUnreadThreads] = useState(new Set());
+  const [wallpaperOpen, setWallpaperOpen] = useState(false);
+  const localDismissedRef = useRef(new Set());
 
   const handleDismiss = useCallback((itemId) => {
+    // Track locally so poll can't overwrite with stale server data
+    localDismissedRef.current.add(itemId);
     // Optimistically mark as dismissed in local state
     setAllItems((prev) => {
       const updated = prev.map((item) =>
         item.id === itemId ? { ...item, dismissed: true } : item
       );
-      // Fire Scout when the last undismissed card is swiped
+      // Fire Scout when the last undismissed card is dismissed
       const remaining = updated.filter((item) => !item.dismissed);
       if (remaining.length === 0) {
         fireRoutine("scout-curate").catch(() => {});
@@ -119,7 +115,14 @@ export default function Feed({
       getFeed()
         .then((data) => {
           if (!cancelled) {
-            setAllItems(data.items || []);
+            // Merge server data with local dismissals to prevent stale
+            // poll responses from overwriting optimistic dismiss state
+            const items = (data.items || []).map((item) =>
+              localDismissedRef.current.has(item.id)
+                ? { ...item, dismissed: true }
+                : item
+            );
+            setAllItems(items);
           }
         })
         .catch(console.error)
@@ -179,20 +182,18 @@ export default function Feed({
             <span className="weather-temp">{weather.temp}°</span>
           </div>
         )}
-        <button className="tour-replay-btn" onClick={onStartTour} aria-label="Tour">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 16v-4M12 8h.01" />
-          </svg>
-        </button>
+        {wallpaper?.reason && (
+          <button className="tour-replay-btn" onClick={() => setWallpaperOpen(true)} aria-label="Wallpaper info">
+            <Image size={16} />
+          </button>
+        )}
+
       </header>
 
       <>
           {unreadCount > 0 && (
             <div className="feed-unread-banner" onClick={onChatOpen}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+              <MessageCircle size={16} />
               <span>{unreadCount} new {unreadCount === 1 ? "message" : "messages"} from fathom</span>
             </div>
           )}
@@ -216,6 +217,13 @@ export default function Feed({
             />
           )}
 
+          {wallpaperOpen && wallpaper && (
+            <WallpaperPanel
+              wallpaper={wallpaper}
+              onClose={() => setWallpaperOpen(false)}
+            />
+          )}
+
           {earlierItems.length > 0 && (
             <div className="feed-earlier">
               <button
@@ -224,17 +232,10 @@ export default function Feed({
               >
                 <span className="feed-earlier-label">
                   Earlier · {earlierItems.length}
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    width="14"
-                    height="14"
+                  <ChevronDown
+                    size={14}
                     className={`feed-earlier-chevron ${earlierOpen ? "open" : ""}`}
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
+                  />
                 </span>
               </button>
               {earlierOpen && (
