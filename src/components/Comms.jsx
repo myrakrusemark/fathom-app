@@ -111,6 +111,7 @@ export default function Comms() {
         setWorkspaces(entries);
       })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- perspective omitted intentionally: handlePerspectiveChange calls loadRooms() directly to avoid double-load
   }, []);
 
   function handlePerspectiveChange(ws) {

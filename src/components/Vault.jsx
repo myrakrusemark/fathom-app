@@ -60,6 +60,7 @@ function FilePanel({ file, workspace, onClose }) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset loading flag before async fetch; must be synchronous to avoid flash of stale content
     setLoading(true);
     getVaultFile(file.path, workspace)
       .then((data) => setContent(data))
@@ -160,6 +161,7 @@ export default function Vault() {
 
   // Fetch files when workspace, sort, or search changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset loading flag before async fetch; must be synchronous to avoid flash of stale content
     setLoading(true);
 
     if (debouncedQuery.trim()) {

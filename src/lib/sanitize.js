@@ -41,7 +41,10 @@ export const feedSanitizeSchema = {
   ],
   attributes: {
     ...defaultSchema.attributes,
-    "*": ["style", "className"],
+    // "style" is intentionally allowed on all elements: feed notifications from the server
+    // use rich inline CSS for card layouts. Content comes from trusted server output, not
+    // user input. "class" (not "className") is the correct hast attribute name.
+    "*": ["style", "class"],
     a: ["href", "target", "rel"],
     img: ["src", "alt", "loading", "width", "height"],
     audio: ["controls", "preload", "src"],

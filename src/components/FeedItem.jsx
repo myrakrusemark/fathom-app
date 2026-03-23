@@ -107,6 +107,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
     if (!showSwipeHint) return;
     if (sessionStorage.getItem("swipe-hint-shown")) return;
     sessionStorage.setItem("swipe-hint-shown", "true");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time animation trigger; cleared by timeout, not external state
     setHintClass("feed-item-swipe-hint");
     const timer = setTimeout(() => setHintClass(""), SWIPE_HINT_MS);
     return () => clearTimeout(timer);

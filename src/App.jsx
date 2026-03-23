@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { isConnected, detectSameOrigin, saveConnection } from "./lib/connection.js";
-import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm, getThemes } from "./api/client.js";
+import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm, getThemes, readRoom } from "./api/client.js";
 import Feed from "./components/Feed.jsx";
 import Routines from "./components/Routines.jsx";
 import Backstage from "./components/Backstage.jsx";
@@ -11,6 +11,8 @@ import Onboarding from "./components/Onboarding.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
 import SetupPackages from "./components/SetupPackages.jsx";
 import PermissionToasts from "./components/PermissionToasts.jsx";
+import AudioPlayerBar from "./components/AudioPlayerBar.jsx";
+import { AudioPlayerProvider } from "./contexts/AudioPlayerContext.jsx";
 
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
@@ -105,7 +107,11 @@ export default function App() {
     getThemes().then(setThemes).catch(() => {});
   }, [connected]);
 
-  // Apply selected theme (or revert to default)
+  // Wallpaper: fetch latest from #wallpaper room
+  const [wallpaper, setWallpaper] = useState(null);
+
+  // Apply selected theme (or revert to default); re-apply wallpaper after since
+  // setting body.style.background (shorthand) resets backgroundImage
   useEffect(() => {
     const theme = themes.find((t) => t.id === themeName);
     // Clear previously applied overrides
@@ -120,20 +126,72 @@ export default function App() {
       document.body.style.color = "";
       document.documentElement.style.removeProperty("--text");
       localStorage.removeItem("fathom-theme");
-      return;
+    } else {
+      document.body.style.background = theme.bg;
+      document.body.style.backgroundAttachment = "fixed";
+      document.body.style.color = theme.text || "";
+      document.documentElement.style.setProperty("--text", theme.text || "#1a1a2e");
+      appliedVars.current.push("--text");
+      for (const [prop, val] of Object.entries(theme.variables || {})) {
+        document.documentElement.style.setProperty(prop, val);
+        appliedVars.current.push(prop);
+      }
+      localStorage.setItem("fathom-theme", themeName);
     }
 
-    document.body.style.background = theme.bg;
-    document.body.style.backgroundAttachment = "fixed";
-    document.body.style.color = theme.text || "";
-    document.documentElement.style.setProperty("--text", theme.text || "#1a1a2e");
-    appliedVars.current.push("--text");
-    for (const [prop, val] of Object.entries(theme.variables || {})) {
-      document.documentElement.style.setProperty(prop, val);
-      appliedVars.current.push(prop);
+    if (wallpaper?.url) {
+      document.body.style.backgroundImage = `url(${wallpaper.url})`;
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center";
+      document.body.style.backgroundAttachment = "fixed";
     }
-    localStorage.setItem("fathom-theme", themeName);
-  }, [themeName, themes]);
+  }, [themeName, themes, wallpaper]);
+
+  useEffect(() => {
+    if (!connected || setupPhase !== "done") return;
+    let cancelled = false;
+
+    function fetchWallpaper() {
+      readRoom("wallpaper", 10080) // last 7 days
+        .then((res) => {
+          const msgs = res?.messages;
+          if (cancelled || !msgs || !msgs.length) return;
+          const latest = msgs[msgs.length - 1];
+          try {
+            const data = typeof latest.message === "string"
+              ? JSON.parse(latest.message)
+              : latest.message;
+            if (data?.url) setWallpaper({ ...data, sender: latest.sender, id: latest.id });
+          } catch {
+            // not JSON or no url field — ignore
+          }
+        })
+        .catch(() => {});
+    }
+
+    fetchWallpaper();
+    const id = setInterval(fetchWallpaper, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [connected, setupPhase]);
+
+  const prevWallpaperId = useRef(null);
+
+  // Apply wallpaper to body; auto-apply theme if wallpaper specifies one
+  useEffect(() => {
+    if (!wallpaper?.url) return;
+    document.body.style.backgroundImage = `url(${wallpaper.url})`;
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
+    document.body.style.backgroundAttachment = "fixed";
+
+    if (wallpaper.id !== prevWallpaperId.current) {
+      prevWallpaperId.current = wallpaper.id;
+      if ('theme' in wallpaper) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- deriving themeName from wallpaper prop on change is intentional; avoids extra state field
+        setThemeName(wallpaper.theme ?? null);
+      }
+    }
+  }, [wallpaper]);
 
   const handleConnectionChange = useCallback(() => {
     const nowConnected = isConnected();
@@ -221,7 +279,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <AudioPlayerProvider>
       {showOnboarding && (
         <div
           className={`onboard-overlay ${completing ? "onboard-exit" : ""}`}
@@ -231,14 +289,15 @@ export default function App() {
         </div>
       )}
       {setupPhase === "done" && showBackstage && <PermissionToasts />}
+      <AudioPlayerBar />
       <div className="app">
         <Routes>
           <Route path="/" element={
             <Feed
               key={feedKey}
               onChatOpen={() => { setChatWorkspace(null); setUnreadCount(0); setChatOpen(true); }}
-              onStartTour={() => setShowOnboarding(true)}
               unreadCount={unreadCount}
+              wallpaper={wallpaper}
             />
           } />
           <Route path="/backstage" element={
@@ -274,6 +333,6 @@ export default function App() {
           onShowBackstageChange={setShowBackstage}
         />
       </div>
-    </>
+    </AudioPlayerProvider>
   );
 }

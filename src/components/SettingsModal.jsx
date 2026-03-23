@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { X, EyeOff, Eye, Check } from "lucide-react";
 import { getConnection, saveConnection, clearConnection } from "../lib/connection.js";
 import {
   testConnection,
@@ -46,7 +47,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
     if (!open || isGate) return;
     if (tab === "comms") loadRetention();
     if (tab === "packages") loadPackages();
-  }, [tab, open, isGate]);
+  }, [tab, open, isGate, loadPackages]);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -194,9 +195,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
           </h2>
           {!isGate && (
             <button className="settings-close" onClick={onClose}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                <path d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X size={20} />
             </button>
           )}
         </div>
@@ -248,16 +247,9 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                     aria-label={showKey ? "Hide key" : "Show key"}
                   >
                     {showKey ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                        <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
-                        <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
-                        <path d="M1 1l22 22" />
-                      </svg>
+                      <EyeOff size={18} />
                     ) : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
+                      <Eye size={18} />
                     )}
                   </button>
                 </div>
@@ -266,13 +258,9 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
               {testResult && (
                 <div className={`settings-test-result ${testResult.ok ? "ok" : "fail"}`}>
                   {testResult.ok ? (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
-                      <path d="M20 6L9 17l-5-5" />
-                    </svg>
+                    <Check size={16} strokeWidth={2.5} />
                   ) : (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
-                      <path d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X size={16} strokeWidth={2.5} />
                   )}
                   <span>{testResult.message}</span>
                 </div>
@@ -305,7 +293,7 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
                   onClick={() => onThemeChange(null)}
                 >
                   <span className="atmosphere-dot" style={{ background: "#a8c4e0" }} />
-                  Default
+                  Light Mode (Default)
                 </button>
                 {(themes || []).map((t) => (
                   <button
