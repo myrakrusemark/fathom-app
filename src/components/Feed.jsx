@@ -101,6 +101,9 @@ export default function Feed({
     [allItems, selectedItemId]
   );
 
+  // Stack computation — only recompute when newItems changes (not on every Feed render)
+  const stackedNewItems = useMemo(() => stackByWorkspace(newItems), [newItems]);
+
   // Always fetch weather
   useEffect(() => {
     getWeather().then(setWeather).catch(() => {});
@@ -200,7 +203,7 @@ export default function Feed({
 
           <div className="feed">
             {newItems.length === 0 && <FeedEmpty />}
-            {stackByWorkspace(newItems).map((entry, index) =>
+            {stackedNewItems.map((entry, index) =>
               entry.stacked ? (
                 <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} unreadThreads={unreadThreads}onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />
               ) : (
