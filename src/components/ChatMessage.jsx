@@ -4,11 +4,7 @@ import { Play, Pause, Mic, Wrench, Clock, ChevronDown, Check, Image } from "luci
 import { getConnection } from "../lib/connection.js";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ThoughtBubble from "./ThoughtBubble.jsx";
-import { timeAgo as timeAgoFn, authUrl } from "../lib/formatters.js";
-
-export function timeAgo(timestamp) {
-  return timeAgoFn(timestamp, { short: true });
-}
+import { timeAgo, authUrl } from "../lib/formatters.js";
 
 export function renderMarkdown(text) {
   if (!text) return null;

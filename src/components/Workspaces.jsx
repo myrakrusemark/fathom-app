@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { MessageSquare, X } from "lucide-react";
 import { getWorkspaceProfiles, getRoutines, fireRoutine, getBrowserSessions } from "../api/client.js";
 import { RoutineRow } from "./Routines.jsx";
-import { timeAgo } from "../lib/formatters.js";
+import { timeAgo, prettyName } from "../lib/formatters.js";
 
 function getProfileStatus(profile) {
   const { execution, process, connected } = profile;
@@ -47,7 +47,7 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions,
   if (workspace.type === "human") return null;
 
   const wsColor = workspace.color || "#888";
-  const displayName = workspace.display_name || name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const displayName = workspace.display_name || prettyName(name);
   const description = workspace.description || "";
   const { color: statusColor, label: statusLabel, pulse } = getProfileStatus(workspace);
   const hasAgent = workspace.agents && workspace.agents.length > 0;
@@ -118,7 +118,7 @@ function WorkspaceDetailPanel({ name, workspace, onClose, isPrimary }) {
   }
 
   const wsColor = workspace.color || "#888";
-  const displayName = workspace.display_name || name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const displayName = workspace.display_name || prettyName(name);
   const { color: statusColor, label: statusLabel, pulse } = getProfileStatus(workspace);
   const lastPing = workspace.last_ping ? timeAgo(workspace.last_ping) : null;
   const lastHeartbeat = workspace.last_heartbeat ? timeAgo(workspace.last_heartbeat) : null;
