@@ -201,7 +201,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
             <div className="feed-item-images">
               {images.map((att, i) => (
                 <img
-                  key={i}
+                  key={att.url || i}
                   className="feed-item-image"
                   src={authUrl(att.url)}
                   alt={att.label}
@@ -214,7 +214,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
           {audioFiles.length > 0 && (
             <div className="feed-item-audio-list">
               {audioFiles.map((att, i) => (
-                <FeedAudioItem key={i} att={att} />
+                <FeedAudioItem key={att.url || i} att={att} />
               ))}
             </div>
           )}
@@ -222,7 +222,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
             <div className="feed-item-files">
               {files.map((att, i) => (
                 <a
-                  key={i}
+                  key={att.url || i}
                   className="feed-item-file-chip"
                   href={authUrl(att.url)}
                   target="_blank"
@@ -242,7 +242,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
           {placeholders.length > 0 && (
             <div className="feed-item-images">
               {placeholders.map((att, i) => (
-                <div key={i} className="feed-item-image-placeholder">{att.label}</div>
+                <div key={att.label || i} className="feed-item-image-placeholder">{att.label}</div>
               ))}
             </div>
           )}

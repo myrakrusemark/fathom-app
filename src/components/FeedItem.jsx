@@ -17,6 +17,11 @@ function authUrl(url) {
 
 const SWIPE_THRESHOLD = 100;
 const ROW_SWIPE_THRESHOLD = 80;
+const SWIPE_OPACITY_RANGE = 300;   // px over which card fades while swiping
+const ROW_OPACITY_RANGE = 200;     // px over which row fades while swiping
+const DISMISS_DELAY_MS = 300;      // wait for swipe-out animation before calling onDismiss
+const RESET_TRANSITION_MS = 200;   // wait before clearing CSS transition after snap-back
+const SWIPE_HINT_MS = 1300;        // how long the swipe-hint animation plays on first load
 
 function StackedRow({ sub, onSelect, onDismiss, unread }) {
   const rowRef = useRef(null);
@@ -33,7 +38,7 @@ function StackedRow({ sub, onSelect, onDismiss, unread }) {
     dx.current = e.touches[0].clientX - startX.current;
     if (dx.current > 0 && rowRef.current) {
       rowRef.current.style.transform = `translateX(${dx.current}px)`;
-      rowRef.current.style.opacity = String(Math.max(0, 1 - dx.current / 200));
+      rowRef.current.style.opacity = String(Math.max(0, 1 - dx.current / ROW_OPACITY_RANGE));
     } else if (rowRef.current) {
       rowRef.current.style.transform = "translateX(0)";
       rowRef.current.style.opacity = "1";
@@ -48,12 +53,12 @@ function StackedRow({ sub, onSelect, onDismiss, unread }) {
         el.style.transform = "translateX(100%)";
         el.style.opacity = "0";
       }
-      setTimeout(() => onDismiss(sub.id), 300);
+      setTimeout(() => onDismiss(sub.id), DISMISS_DELAY_MS);
     } else if (el) {
       el.style.transition = "transform 0.2s, opacity 0.2s";
       el.style.transform = "";
       el.style.opacity = "";
-      setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = ""; }, 200);
+      setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = ""; }, RESET_TRANSITION_MS);
     }
   }, [onDismiss, sub.id]);
 
@@ -103,7 +108,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
     if (sessionStorage.getItem("swipe-hint-shown")) return;
     sessionStorage.setItem("swipe-hint-shown", "true");
     setHintClass("feed-item-swipe-hint");
-    const timer = setTimeout(() => setHintClass(""), 1300);
+    const timer = setTimeout(() => setHintClass(""), SWIPE_HINT_MS);
     return () => clearTimeout(timer);
   }, [showSwipeHint]);
 
@@ -117,7 +122,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
     swipeDx.current = e.touches[0].clientX - swipeStart.current;
     if (swipeDx.current > 0 && cardRef.current) {
       cardRef.current.style.transform = `translateX(${swipeDx.current}px)`;
-      cardRef.current.style.opacity = String(Math.max(0, 1 - swipeDx.current / 300));
+      cardRef.current.style.opacity = String(Math.max(0, 1 - swipeDx.current / SWIPE_OPACITY_RANGE));
     } else if (cardRef.current) {
       cardRef.current.style.transform = "translateX(0)";
       cardRef.current.style.opacity = "1";
@@ -132,12 +137,12 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
         el.style.transform = "translateX(100%)";
         el.style.opacity = "0";
       }
-      setTimeout(() => onDismiss(item.id), 300);
+      setTimeout(() => onDismiss(item.id), DISMISS_DELAY_MS);
     } else if (el) {
       el.style.transition = "transform 0.2s, opacity 0.2s";
       el.style.transform = "";
       el.style.opacity = "";
-      setTimeout(() => { if (cardRef.current) cardRef.current.style.transition = ""; }, 200);
+      setTimeout(() => { if (cardRef.current) cardRef.current.style.transition = ""; }, RESET_TRANSITION_MS);
     }
   }, [onDismiss, item.id]);
 
