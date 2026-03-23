@@ -5,7 +5,7 @@
     "total_lines_added": 283,
     "total_bugs_fixed": 11,
     "total_tests_added": 37,
-    "iterations_completed": 9,
+    "iterations_completed": 10,
     "repos_cleaned": ["app"]
   },
   "findings": [
@@ -90,6 +90,16 @@
       "lines_removed": 0
     }
   ],
+    {
+      "date": "2026-03-23",
+      "perspective": "API Consistency",
+      "repo": "app",
+      "description": "getBrowserSessions() aligned with request() helper pattern (removed bespoke fetch). Removed stale data.workspaces fallback from 4 components (Comms, Vault, Workspaces, PermissionToasts) — server only returns {profiles:{...}}. Simplified getDmUnreadCount: data.rooms||data||[] -> data.rooms||[].",
+      "type": "refactor",
+      "files_changed": 5,
+      "lines_added": 1,
+      "lines_removed": 9
+    },
     {
       "date": "2026-03-23",
       "perspective": "Cross-Repo Coherence",

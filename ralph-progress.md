@@ -13,7 +13,7 @@
 | 7. Performance | DONE |
 | 8. Dependency Audit | DONE |
 | 9. Cross-Repo Coherence | DONE |
-| 10. API Consistency | - |
+| 10. API Consistency | DONE |
 | 11. Docker & DevOps | - |
 | 12. Accessibility | - |
 | 13. Error Boundary Audit | - |
@@ -23,7 +23,7 @@
 
 ## Next Target
 
-Perspective 10: API Consistency / app
+Perspective 11: Docker & DevOps / app
 
 ## Deferred Upgrades
 
@@ -33,6 +33,14 @@ Perspective 10: API Consistency / app
 | `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | Tied to Vite — upgrade together with Vite 8 |
 
 ## Log
+
+### 2026-03-23 — Perspective 10: API Consistency / app
+
+- **getBrowserSessions()** refactored to use `request()` helper — was the only client function using bespoke fetch with no error propagation (8 lines → 1)
+- **Stale `data.workspaces` fallback removed** from Comms.jsx, Vault.jsx, Workspaces.jsx, PermissionToasts.jsx — server has returned `{profiles:{...}}` for a long time; the `data.workspaces` branch was never reachable
+- **getDmUnreadCount** simplified: `data.rooms || data || []` → `data.rooms || []`
+- **sendVoice confirmed clean**: `/api/voice/send` exists in voice.py router
+- No URL naming issues found — paths follow consistent `/api/{noun}/{sub}` pattern
 
 ### 2026-03-23 — Perspective 9: Cross-Repo Coherence / app
 
