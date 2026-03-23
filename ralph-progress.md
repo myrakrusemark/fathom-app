@@ -12,7 +12,7 @@
 | 6. Security Review | DONE |
 | 7. Performance | DONE |
 | 8. Dependency Audit | DONE |
-| 9. Cross-Repo Coherence | - |
+| 9. Cross-Repo Coherence | DONE |
 | 10. API Consistency | - |
 | 11. Docker & DevOps | - |
 | 12. Accessibility | - |
@@ -23,7 +23,7 @@
 
 ## Next Target
 
-Perspective 9: Cross-Repo Coherence / app
+Perspective 10: API Consistency / app
 
 ## Deferred Upgrades
 
@@ -33,6 +33,14 @@ Perspective 9: Cross-Repo Coherence / app
 | `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | Tied to Vite — upgrade together with Vite 8 |
 
 ## Log
+
+### 2026-03-23 — Perspective 9: Cross-Repo Coherence / app
+
+- Audited all ~50 client.js functions against server router files (conversation, room, startup, packages, activation, version, settings)
+- **3 dead client functions removed**: `getWeather()` (endpoint removed from server, silently failed, weather pill never rendered), `getReceipt(id)` (never existed, no callers), `getWorkspaces()` (server only has POST, no callers)
+- **Weather cleanup**: removed `WeatherIcon` component, `weather` state, and `getWeather` useEffect from Feed.jsx (-33 lines)
+- **OPEN BUG**: `saveMementoCredentials`/`deleteMementoCredentials` call `/api/packages/memento/credentials` which has no server handler — manual Memento key entry UI shows "Failed to save" on every attempt. Needs server-side endpoint. Documented in findings but left in client (UI depends on it).
+- **Verified clean**: `getWorkspaceProfiles()` response shape matches (`data.profiles` used correctly by both Comms.jsx and testConnection()); `getBrowserSessions()` returns `{sessions:[]}` shape matching client expectation
 
 ### 2026-03-23 — Perspective 8: Dependency Audit / app
 

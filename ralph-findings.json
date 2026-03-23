@@ -1,11 +1,11 @@
 {
   "version": 1,
   "summary": {
-    "total_lines_removed": 398,
+    "total_lines_removed": 431,
     "total_lines_added": 283,
-    "total_bugs_fixed": 9,
+    "total_bugs_fixed": 11,
     "total_tests_added": 37,
-    "iterations_completed": 8,
+    "iterations_completed": 9,
     "repos_cleaned": ["app"]
   },
   "findings": [
@@ -88,6 +88,17 @@
       "files_changed": 2,
       "lines_added": 0,
       "lines_removed": 0
+    }
+  ],
+    {
+      "date": "2026-03-23",
+      "perspective": "Cross-Repo Coherence",
+      "repo": "app",
+      "description": "Removed 3 dead client functions (getWeather→/api/weather removed from server, getReceipt→/api/receipts/{id} never existed, getWorkspaces→GET /api/workspaces server is POST-only). Removed WeatherIcon component and weather state from Feed.jsx. OPEN BUG: saveMementoCredentials/deleteMementoCredentials call /api/packages/memento/credentials which has no server handler — manual Memento key entry UI is broken (needs server-side endpoint).",
+      "type": "coherence",
+      "files_changed": 2,
+      "lines_added": 0,
+      "lines_removed": 33
     }
   ],
   "consolidation_targets": {
