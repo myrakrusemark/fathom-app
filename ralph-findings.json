@@ -5,7 +5,7 @@
     "total_lines_added": 283,
     "total_bugs_fixed": 15,
     "total_tests_added": 37,
-    "iterations_completed": 13,
+    "iterations_completed": 14,
     "repos_cleaned": ["app"]
   },
   "findings": [
@@ -90,6 +90,16 @@
       "lines_removed": 0
     }
   ],
+    {
+      "date": "2026-03-23",
+      "perspective": "Utility Consolidation",
+      "repo": "app",
+      "description": "Removed dead export function timeAgo() from ChatMessage.jsx (no callers). Replaced 2 inline name.replace(/-/g,...) in Workspaces.jsx with prettyName() from formatters. All consolidation targets now complete.",
+      "type": "dead-code",
+      "files_changed": 2,
+      "lines_added": 1,
+      "lines_removed": 7
+    },
     {
       "date": "2026-03-23",
       "perspective": "Error Boundary Audit",

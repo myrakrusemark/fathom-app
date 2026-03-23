@@ -17,13 +17,13 @@
 | 11. Docker & DevOps | DONE |
 | 12. Accessibility | DONE |
 | 13. Error Boundary Audit | DONE |
-| 14. Utility Consolidation | - |
+| 14. Utility Consolidation | DONE |
 | 15. New Perspectives | - |
 | 16–25. UX Perspectives | - |
 
 ## Next Target
 
-Perspective 14: Utility Consolidation / app
+Perspective 15: New Perspectives / app
 
 ## Deferred Upgrades
 
@@ -33,6 +33,13 @@ Perspective 14: Utility Consolidation / app
 | `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | Tied to Vite — upgrade together with Vite 8 |
 
 ## Log
+
+### 2026-03-23 — Perspective 14: Utility Consolidation / app
+
+- `ChatMessage.jsx`: removed dead `export function timeAgo()` — exported but never imported anywhere; ChatMessage now imports `timeAgo` directly from formatters
+- `Workspaces.jsx`: two inline `name.replace(/-/g," ").replace(/\b\w/g,...)` expressions replaced with `prettyName(name)` from formatters — added `prettyName` to import
+- Confirmed no remaining duplication beyond local `timeAgo` wrapper in Routines.jsx (adds `|| "never"` fallback — intentional local variant, not a consolidation target)
+- `consolidation_targets.done` list is complete: timeAgo, prettyName, stripChatDecorations, formatTimestamp, timeUntil, authUrl
 
 ### 2026-03-23 — Perspective 13: Error Boundary Audit / app
 
