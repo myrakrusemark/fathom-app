@@ -47,9 +47,6 @@ export function fireRoutine(id) {
   return request(`/api/routines/${id}/fire`);
 }
 
-export function getChat() {
-  return request("/api/chat");
-}
 
 export function sendMessage(text, workspace = null) {
   const ws = workspace || getWorkspace();
@@ -127,8 +124,8 @@ export function readRoom(roomName, minutes = 60, workspace = null, markRead = fa
 }
 
 export function getDmRoomName() {
-  const ws = getWorkspace();
-  const human = getHumanUser();
+  const ws = getWorkspace().toLowerCase();
+  const human = getHumanUser().toLowerCase();
   const sorted = [ws, human].sort();
   return `dm:${sorted.join("+")}`;
 }
@@ -224,18 +221,6 @@ export function provisionMementoKey() {
   return request("/api/packages/memento/provision", { method: "POST" });
 }
 
-export function saveClaudeCredentials(key, type) {
-  return request("/api/packages/claude/credentials", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key, type }),
-  });
-}
-
-export function deleteClaudeCredentials() {
-  return request("/api/packages/claude/credentials", { method: "DELETE" });
-}
-
 export function saveMementoCredentials(key) {
   return request("/api/packages/memento/credentials", {
     method: "POST",
@@ -246,10 +231,6 @@ export function saveMementoCredentials(key) {
 
 export function deleteMementoCredentials() {
   return request("/api/packages/memento/credentials", { method: "DELETE" });
-}
-
-export function validateClaudeCredentials() {
-  return request("/api/packages/claude/validate", { method: "POST" });
 }
 
 export function connectBrowserless(wsEndpoint) {
