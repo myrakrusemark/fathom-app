@@ -55,8 +55,19 @@ function inlineMarkdown(text) {
     } else if (match[4]) {
       tokens.push(<code key={match.index} className="chat-md-code">{match[4]}</code>);
     } else if (match[5] && match[6]) {
+      // Validate URL protocol — only allow safe schemes to prevent XSS via javascript:/data: hrefs
+      const href = match[6];
+      const safePrefixes = ["http://", "https://", "mailto:", "/", "#"];
+      const isSafe = safePrefixes.some((p) => href.startsWith(p));
       tokens.push(
-        <a key={match.index} href={match[6]} className="chat-md-link" onClick={(e) => e.stopPropagation()}>
+        <a
+          key={match.index}
+          href={isSafe ? href : "#"}
+          className="chat-md-link"
+          rel="noopener noreferrer"
+          target={href.startsWith("http") ? "_blank" : undefined}
+          onClick={(e) => e.stopPropagation()}
+        >
           {match[5]}
         </a>,
       );
