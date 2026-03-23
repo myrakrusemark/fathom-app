@@ -8,6 +8,7 @@ import { feedSanitizeSchema } from "../lib/sanitize.js";
 import { timeAgo, authUrl } from "../lib/formatters.js";
 
 const SWIPE_THRESHOLD = 100;
+const SWIPE_LEFT_THRESHOLD = 60;  // px left to open detail panel
 const ROW_SWIPE_THRESHOLD = 80;
 const SWIPE_OPACITY_RANGE = 300;   // px over which card fades while swiping
 const ROW_OPACITY_RANGE = 200;     // px over which row fades while swiping
@@ -113,14 +114,22 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
 
   const handleTouchMove = useCallback((e) => {
     swipeDx.current = e.touches[0].clientX - swipeStart.current;
-    if (swipeDx.current > 0 && cardRef.current) {
-      cardRef.current.style.transform = `translateX(${swipeDx.current}px)`;
-      cardRef.current.style.opacity = String(Math.max(0, 1 - swipeDx.current / SWIPE_OPACITY_RANGE));
-    } else if (cardRef.current) {
-      cardRef.current.style.transform = "translateX(0)";
-      cardRef.current.style.opacity = "1";
+    if (cardRef.current) {
+      if (swipeDx.current > 0) {
+        // Right: dismiss gesture — fade out
+        cardRef.current.style.transform = `translateX(${swipeDx.current}px)`;
+        cardRef.current.style.opacity = String(Math.max(0, 1 - swipeDx.current / SWIPE_OPACITY_RANGE));
+      } else if (swipeDx.current < 0 && onSelect) {
+        // Left: open gesture — slight tug, max 30px
+        const pull = Math.max(swipeDx.current, -30);
+        cardRef.current.style.transform = `translateX(${pull}px)`;
+        cardRef.current.style.opacity = "1";
+      } else {
+        cardRef.current.style.transform = "translateX(0)";
+        cardRef.current.style.opacity = "1";
+      }
     }
-  }, []);
+  }, [onSelect]);
 
   const handleTouchEnd = useCallback(() => {
     const el = cardRef.current;
@@ -131,13 +140,22 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
         el.style.opacity = "0";
       }
       setTimeout(() => onDismiss(item.id), DISMISS_DELAY_MS);
+    } else if (swipeDx.current < -SWIPE_LEFT_THRESHOLD && onSelect) {
+      // Snap back then open detail
+      if (el) {
+        el.style.transition = "transform 0.2s, opacity 0.2s";
+        el.style.transform = "";
+        el.style.opacity = "";
+        setTimeout(() => { if (cardRef.current) cardRef.current.style.transition = ""; }, RESET_TRANSITION_MS);
+      }
+      onSelect(item);
     } else if (el) {
       el.style.transition = "transform 0.2s, opacity 0.2s";
       el.style.transform = "";
       el.style.opacity = "";
       setTimeout(() => { if (cardRef.current) cardRef.current.style.transition = ""; }, RESET_TRANSITION_MS);
     }
-  }, [onDismiss, item.id]);
+  }, [onDismiss, onSelect, item]);
 
   // Stacked card — multiple same-workspace items in one cell
   if (stackedItems && stackedItems.length > 1) {
@@ -193,7 +211,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
   return (
     <article
       ref={cardRef}
-      className={`feed-item${item.layout ? ` layout-${item.layout}` : ""}${hintClass ? ` ${hintClass}` : ""}`}
+      className={`feed-item${item.layout ? ` layout-${item.layout}` : ""}${unreadThread ? " feed-item-unread" : ""}${hintClass ? ` ${hintClass}` : ""}`}
       onClick={handleClick}
       onKeyDown={(e) => { if (e.key === "Enter") handleClick(); }}
       onTouchStart={handleTouchStart}
@@ -211,10 +229,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
           <X size={14} />
         </button>
       )}
-      <h3 className="feed-item-title">
-        {unreadThread && <span className="feed-item-unread-dot" />}
-        {item.title}
-      </h3>
+      <h3 className="feed-item-title">{item.title}</h3>
       <div className="feed-item-body" onClick={(e) => { if (e.target.tagName === "A") e.stopPropagation(); }}>
         <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
       </div>
