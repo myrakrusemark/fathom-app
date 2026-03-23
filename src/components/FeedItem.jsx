@@ -175,7 +175,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
         )}
         <div className="feed-item-footer" style={{ background: `${item.workspace_color}25` }}>
           <span className="feed-item-workspace">{item.workspace_name}</span>
-          <span className="feed-item-time">{item.layout || "standard"} · {stackedItems.length} items</span>
+          <span className="feed-item-time">{stackedItems.length} items</span>
         </div>
       </article>
     );
@@ -236,7 +236,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
             {attachments.length}
           </span>
         )}
-        <span className="feed-item-time">{item.layout || "standard"} · {timeAgo(item.timestamp)}</span>
+        <span className="feed-item-time">{timeAgo(item.timestamp)}</span>
       </div>
     </article>
   );
