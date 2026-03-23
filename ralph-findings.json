@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "summary": {
+    "total_lines_removed": 0,
+    "total_lines_added": 0,
+    "total_bugs_fixed": 0,
+    "total_tests_added": 0,
+    "iterations_completed": 0,
+    "repos_cleaned": []
+  },
+  "findings": [],
+  "consolidation_targets": {
+    "timeAgo": "Duplicated in Chat.jsx, ChatMessage.jsx, Comms.jsx, FeedDetailPanel.jsx, FeedItem.jsx, Routines.jsx, Vault.jsx, Workspaces.jsx — extract to src/lib/formatters.js",
+    "prettyName": "Duplicated in Vault.jsx and Comms.jsx — extract to src/lib/formatters.js",
+    "stripChatDecorations": "Duplicated in FeedDetailPanel.jsx and WallpaperPanel.jsx — extract to src/lib/formatters.js or chatUtils.js"
+  }
+}
