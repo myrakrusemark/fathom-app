@@ -86,10 +86,6 @@ export function getConversation() {
   return request(`/api/conversation/${ws}`);
 }
 
-export function getWorkspaces() {
-  return request("/api/workspaces");
-}
-
 export function getWorkspaceProfiles() {
   return request("/api/workspaces/profiles");
 }
@@ -100,14 +96,6 @@ export function getBrowserSessions() {
   return fetch(`${conn.serverUrl}/api/browser/sessions`, {
     headers: { Authorization: `Bearer ${conn.apiKey}` },
   }).then((r) => r.json());
-}
-
-export function getWeather() {
-  return request("/api/weather");
-}
-
-export function getReceipt(id) {
-  return request(`/api/receipts/${id}`);
 }
 
 export function postToRoom(roomName, message, sender = null) {

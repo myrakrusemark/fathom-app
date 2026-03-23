@@ -1,18 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { CloudSun, Cloud, MessageCircle, ChevronDown, Image } from "lucide-react";
-import { getFeed, getWeather, listRooms, dismissFeedItem, fireRoutine } from "../api/client.js";
+import { MessageCircle, ChevronDown, Image } from "lucide-react";
+import { getFeed, listRooms, dismissFeedItem, fireRoutine } from "../api/client.js";
 import { getHumanUser } from "../lib/connection.js";
 import FeedItem from "./FeedItem.jsx";
 import FeedDetailPanel from "./FeedDetailPanel.jsx";
 import FeedEmpty from "./FeedEmpty.jsx";
 import WallpaperPanel from "./WallpaperPanel.jsx";
-
-function WeatherIcon({ icon }) {
-  if (icon === "cloud-sun") {
-    return <CloudSun size={18} strokeWidth={1.5} />;
-  }
-  return <Cloud size={18} strokeWidth={1.5} />;
-}
 
 function stackByWorkspace(items) {
   const result = [];
@@ -54,7 +47,6 @@ export default function Feed({
 }) {
   const [allItems, setAllItems] = useState([]);
   const [earlierOpen, setEarlierOpen] = useState(false);
-  const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [unreadThreads, setUnreadThreads] = useState(new Set());
@@ -103,11 +95,6 @@ export default function Feed({
 
   // Stack computation — only recompute when newItems changes (not on every Feed render)
   const stackedNewItems = useMemo(() => stackByWorkspace(newItems), [newItems]);
-
-  // Always fetch weather
-  useEffect(() => {
-    getWeather().then(setWeather).catch(() => {});
-  }, []);
 
   // Fetch feed data, poll every 30s
   useEffect(() => {
@@ -179,12 +166,6 @@ export default function Feed({
       <header className="page-header">
         <h1>fathom</h1>
         <span className="header-subtitle">updates</span>
-        {weather && (
-          <div className="weather-pill">
-            <WeatherIcon icon={weather.icon} />
-            <span className="weather-temp">{weather.temp}°</span>
-          </div>
-        )}
         {wallpaper?.reason && (
           <button className="tour-replay-btn" onClick={() => setWallpaperOpen(true)} aria-label="Wallpaper info">
             <Image size={16} />
