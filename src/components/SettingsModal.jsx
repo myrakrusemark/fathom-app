@@ -42,6 +42,24 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
     }
   }, [open, isGate]);
 
+  const loadPackages = useCallback(async () => {
+    setPackagesLoading(true);
+    try {
+      const data = await getPackages();
+      const pkgList = Object.entries(data).map(([name, info]) => ({
+        name,
+        ...info,
+        status: info.installing ? "installing" : info.installed ? "installed" : "available",
+      }));
+      setPackages(pkgList);
+      startPollingIfNeeded(pkgList);
+    } catch {
+      setPackages([]);
+    } finally {
+      setPackagesLoading(false);
+    }
+  }, []);
+
   // Load tab data when switching
   useEffect(() => {
     if (!open || isGate) return;
@@ -81,24 +99,6 @@ export default function SettingsModal({ open, onClose, onConnectionChange, isGat
       // silent fail — could add toast later
     }
   }
-
-  const loadPackages = useCallback(async () => {
-    setPackagesLoading(true);
-    try {
-      const data = await getPackages();
-      const pkgList = Object.entries(data).map(([name, info]) => ({
-        name,
-        ...info,
-        status: info.installing ? "installing" : info.installed ? "installed" : "available",
-      }));
-      setPackages(pkgList);
-      startPollingIfNeeded(pkgList);
-    } catch {
-      setPackages([]);
-    } finally {
-      setPackagesLoading(false);
-    }
-  }, []);
 
   function startPollingIfNeeded(pkgs) {
     if (pollRef.current) clearInterval(pollRef.current);
