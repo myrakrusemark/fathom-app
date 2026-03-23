@@ -1,21 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useState, useRef } from "react";
+import { useState } from "react";
+import { Play, Pause, Mic, Wrench, Clock, ChevronDown, Check, Image } from "lucide-react";
 import { getConnection } from "../lib/connection.js";
+import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ThoughtBubble from "./ThoughtBubble.jsx";
+import { timeAgo as timeAgoFn } from "../lib/formatters.js";
 
 export function timeAgo(timestamp) {
-  let ms = new Date(timestamp).getTime();
-  // Detect Unix seconds (< year 2001 in ms) and convert
-  if (ms < 1e12) ms = ms * 1000;
-  const diff = Date.now() - ms;
-  if (diff < 0 || !Number.isFinite(diff)) return "now";
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
+  return timeAgoFn(timestamp, { short: true });
 }
 
 export function renderMarkdown(text) {
@@ -105,56 +97,61 @@ export function authUrl(url) {
 const VOICE_BAR_HEIGHTS = [12, 8, 18, 6, 15, 10, 19, 7, 14, 11, 17, 9];
 
 function VoiceMessage({ msg }) {
-  const [playing, setPlaying] = useState(false);
-  const audioRef = useRef(null);
+  const { play, pause, playing, track } = useAudioPlayer();
+
+  const conn = getConnection();
+  const baseUrl = conn?.serverUrl || "";
+  const fullUrl = msg.audio_url ? `${baseUrl}${msg.audio_url}` : null;
+  const isThisPlaying = playing && track?.url === fullUrl;
 
   function handlePlay() {
-    if (!msg.audio_url) return;
-    if (playing) {
-      audioRef.current?.pause();
-      setPlaying(false);
-      return;
-    }
-    const conn = getConnection();
-    const baseUrl = conn?.serverUrl || "";
-    const audio = new Audio(`${baseUrl}${msg.audio_url}`);
-    audioRef.current = audio;
-    audio.onended = () => setPlaying(false);
-    audio.onerror = () => setPlaying(false);
-    audio.play();
-    setPlaying(true);
+    if (!fullUrl) return;
+    if (isThisPlaying) { pause(); return; }
+    play(fullUrl, "Voice message", "voice");
   }
 
   return (
     <div
-      className={`chat-voice ${msg.audio_url ? "playable" : ""} ${playing ? "playing" : ""}`}
+      className={`chat-voice ${msg.audio_url ? "playable" : ""} ${isThisPlaying ? "playing" : ""}`}
       onClick={handlePlay}
     >
       {msg.audio_url ? (
-        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-          {playing ? (
-            <><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></>
-          ) : (
-            <path d="M8 5v14l11-7z" />
-          )}
-        </svg>
+        isThisPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />
       ) : (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-          <path d="M19 10v2a7 7 0 01-14 0v-2" />
-          <path d="M12 19v4M8 23h8" />
-        </svg>
+        <Mic size={16} />
       )}
       <div className="chat-voice-wave">
         {VOICE_BAR_HEIGHTS.map((h, i) => (
           <div
             key={i}
-            className={`chat-voice-bar ${playing ? "animating" : ""}`}
+            className={`chat-voice-bar ${isThisPlaying ? "animating" : ""}`}
             style={{ height: `${h}px` }}
           />
         ))}
       </div>
       <span className="chat-voice-dur">{msg.duration}s</span>
+    </div>
+  );
+}
+
+function AudioAttachment({ att }) {
+  const { play, pause, playing, track } = useAudioPlayer();
+  const url = att._local ? att.url : authUrl(att.url);
+  const isThisPlaying = playing && track?.url === url;
+
+  function handleClick() {
+    if (isThisPlaying) { pause(); return; }
+    play(url, att.label || "Audio", "audio");
+  }
+
+  return (
+    <div className="chat-bubble-att-audio" onClick={handleClick}>
+      {isThisPlaying ? (
+        <Pause size={14} fill="currentColor" className="chat-bubble-att-audio-icon" />
+      ) : (
+        <Play size={14} fill="currentColor" className="chat-bubble-att-audio-icon" />
+      )}
+      <span className="chat-bubble-att-label">{att.label}</span>
     </div>
   );
 }
@@ -245,9 +242,7 @@ function ToolIndicator({ msg }) {
         {icon === "memory" ? (
           <ThoughtBubble size={14} color="var(--text-muted)" />
         ) : (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
-            <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
-          </svg>
+          <Wrench size={12} />
         )}
       </span>
       <span className="chat-tool-name">{label}</span>
@@ -281,17 +276,15 @@ function PingEvent({ msg }) {
   return (
     <div className="chat-ping-event" onClick={() => setExpanded(!expanded)}>
       <div className="chat-ping-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="12" height="12">
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
+        <Clock size={12} />
         <span className="chat-ping-label">ping</span>
         <span className="chat-ping-title">{firstLine.replace(/^\[|\]$/g, "")}</span>
         {rest && (
-          <svg className="chat-ping-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"
-            style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <ChevronDown
+            className="chat-ping-chevron"
+            size={12}
+            style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
+          />
         )}
       </div>
       {expanded && rest && (
@@ -307,9 +300,7 @@ export default function ChatMessage({ msg }) {
   if (msg.type === "presence") {
     return (
       <div className="chat-presence">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
-          <path d="M20 6L9 17l-5-5" />
-        </svg>
+        <Check size={14} strokeWidth={2.5} />
         {msg.label && <span className="chat-presence-label">{msg.label}</span>}
       </div>
     );
@@ -362,11 +353,7 @@ export default function ChatMessage({ msg }) {
           {msg.type === "image" && (
             <div className="chat-image">
               <div className="chat-image-placeholder">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <path d="M21 15l-5-5L5 21" />
-                </svg>
+                <Image size={24} strokeWidth={1.5} />
                 <span>{msg.image_alt || "Image"}</span>
               </div>
             </div>
@@ -384,10 +371,7 @@ export default function ChatMessage({ msg }) {
                 />
               ))}
               {msg.attachments.filter(a => a.type === "audio").map((att, i) => (
-                <div key={i} className="chat-bubble-att-audio">
-                  <span className="chat-bubble-att-label">{att.label}</span>
-                  <audio controls preload="none" src={att._local ? att.url : authUrl(att.url)} />
-                </div>
+                <AudioAttachment key={i} att={att} />
               ))}
               {msg.attachments.filter(a => a.type !== "image" && a.type !== "audio").map((att, i) => (
                 <a

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { X } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import { feedSanitizeSchema } from "../lib/sanitize.js";
@@ -10,21 +12,7 @@ import {
   vaultRawUrl,
   getWorkspaceProfiles,
 } from "../api/client.js";
-
-function timeAgo(ts) {
-  if (!ts) return "";
-  const diff = Date.now() - (typeof ts === "number" ? ts * 1000 : new Date(ts).getTime());
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-function prettyName(slug) {
-  return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
+import { timeAgo, prettyName } from "../lib/formatters.js";
 
 function titleFromPath(path) {
   const parts = path.split("/");
@@ -106,9 +94,7 @@ function FilePanel({ file, workspace, onClose }) {
         <div className="feed-panel-scroll">
           <div className="feed-panel-top-actions">
             <button className="feed-panel-close" onClick={handleClose} aria-label="Close">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
+              <X size={20} />
             </button>
           </div>
 
@@ -127,6 +113,7 @@ function FilePanel({ file, workspace, onClose }) {
           {!loading && content && (
             <div className="vault-detail-content">
               <Markdown
+                remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}
                 components={markdownComponents}
               >

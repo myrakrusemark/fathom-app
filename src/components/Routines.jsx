@@ -1,37 +1,14 @@
 import { useState, useEffect } from "react";
+import { X, Play, Clock } from "lucide-react";
 import { getRoutines, fireRoutine } from "../api/client.js";
+import { timeAgo as timeAgoFn, timeUntil, formatTimestamp } from "../lib/formatters.js";
 
 function timeAgo(timestamp) {
-  if (!timestamp) return "never";
-  const diff = Date.now() - new Date(timestamp).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-function timeUntil(timestamp) {
-  if (!timestamp) return "";
-  const diff = new Date(timestamp).getTime() - Date.now();
-  if (diff < 0) return "overdue";
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 60) return `in ${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  return `in ${hours}h`;
+  return timeAgoFn(timestamp) || "never";
 }
 
 function frequencyLabel(r) {
   return r.frequency || "on demand";
-}
-
-function formatTimestamp(ts) {
-  if (!ts) return "—";
-  const d = new Date(ts);
-  return d.toLocaleString(undefined, {
-    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-  });
 }
 
 function RoutineDetailPanel({ routine, onClose, onFire }) {
@@ -75,9 +52,7 @@ function RoutineDetailPanel({ routine, onClose, onFire }) {
         <div className="feed-panel-scroll">
           <div className="feed-panel-top-actions">
             <button className="feed-panel-close" onClick={handleClose} aria-label="Close">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
+              <X size={20} />
             </button>
           </div>
 
@@ -225,14 +200,9 @@ export function RoutineRow({ routine, onFire, onSelect }) {
           style={{ color }}
         >
           {firing ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
-              <circle cx="12" cy="12" r="10" opacity="0.3" />
-              <path d="M12 6v6l4 2" />
-            </svg>
+            <Clock size={16} opacity={0.3} />
           ) : (
-            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            <Play size={16} fill="currentColor" />
           )}
         </button>
         <div className="routine-info">

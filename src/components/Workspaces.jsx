@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { MessageSquare, X } from "lucide-react";
 import { getWorkspaceProfiles, getRoutines, fireRoutine, getBrowserSessions } from "../api/client.js";
 import { RoutineRow } from "./Routines.jsx";
+import { timeAgo } from "../lib/formatters.js";
 
 function getProfileStatus(profile) {
   const { execution, process, connected } = profile;
@@ -15,17 +17,6 @@ function getProfileStatus(profile) {
   return { status: "offline", color: "rgba(168,212,180,0.3)", label: "offline", pulse: false };
 }
 
-function timeAgo(timestamp) {
-  if (!timestamp) return null;
-  const diff = Date.now() - new Date(timestamp).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
 
 function BrowserTabs({ sessions }) {
   if (!sessions || sessions.length === 0) return null;
@@ -52,7 +43,7 @@ function BrowserTabs({ sessions }) {
   );
 }
 
-function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions }) {
+function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions, isPrimary }) {
   if (workspace.type === "human") return null;
 
   const wsColor = workspace.color || "#888";
@@ -69,6 +60,7 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions 
             <span className="workspace-card-name-row">
               <span className="workspace-color-dot" style={{ background: wsColor }} />
               {displayName}
+              {isPrimary && <span className="workspace-badge primary">Primary</span>}
               {workspace.ssh && <span className="workspace-badge ssh">SSH</span>}
               {workspace.browser && <span className="workspace-badge browser">Browser</span>}
             </span>
@@ -81,9 +73,7 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions 
                 onClick={(e) => { e.stopPropagation(); onOpenChat(name); }}
                 aria-label={`Chat with ${displayName}`}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                </svg>
+                <MessageSquare size={16} />
               </button>
             )}
             <div className="workspace-status-indicator">
@@ -99,7 +89,7 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions 
   );
 }
 
-function WorkspaceDetailPanel({ name, workspace, onClose }) {
+function WorkspaceDetailPanel({ name, workspace, onClose, isPrimary }) {
   const [visible, setVisible] = useState(false);
   const [routines, setRoutines] = useState([]);
 
@@ -135,9 +125,7 @@ function WorkspaceDetailPanel({ name, workspace, onClose }) {
         <div className="feed-panel-scroll">
           <div className="feed-panel-top-actions">
             <button className="feed-panel-close" onClick={handleClose} aria-label="Close">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
+              <X size={20} />
             </button>
           </div>
 
@@ -146,6 +134,7 @@ function WorkspaceDetailPanel({ name, workspace, onClose }) {
               <h2 className="workspace-detail-name">
                 <span className="workspace-color-dot large" style={{ background: wsColor }} />
                 {displayName}
+                {isPrimary && <span className="workspace-badge primary">Primary</span>}
                 {workspace.ssh && <span className="workspace-badge ssh">SSH</span>}
                 {workspace.browser && <span className="workspace-badge browser">Browser</span>}
               </h2>
@@ -259,6 +248,7 @@ export default function Workspaces({ onOpenChat }) {
   if (loading) return <div className="loading">loading...</div>;
   if (error) return <div className="empty-state">{error}</div>;
 
+  const defaultWorkspace = workspaces?.default_workspace;
   const entries = workspaces
     ? Object.entries(workspaces.workspaces || workspaces.profiles || workspaces)
         .filter(([, v]) => typeof v === "object" && v.type !== "human")
@@ -278,6 +268,7 @@ export default function Workspaces({ onOpenChat }) {
           key={name}
           name={name}
           workspace={ws}
+          isPrimary={name === defaultWorkspace}
           onSelect={(n, w) => setSelected({ name: n, workspace: w })}
           onOpenChat={onOpenChat}
           browserSessions={ws.browser ? browserSessions : []}
@@ -287,6 +278,7 @@ export default function Workspaces({ onOpenChat }) {
         <WorkspaceDetailPanel
           name={selected.name}
           workspace={selected.workspace}
+          isPrimary={selected.name === defaultWorkspace}
           onClose={() => setSelected(null)}
         />
       )}

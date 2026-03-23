@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState, useEffect } from "react";
+import { Play, Pause, Check, X, Send, Download, ThumbsUp, ThumbsDown } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import { feedSanitizeSchema } from "../lib/sanitize.js";
@@ -7,18 +9,9 @@ import PhotoSwipeLightbox from "photoswipe/lightbox";
 import "photoswipe/style.css";
 import { sendReaction, postToRoom, readRoom } from "../api/client.js";
 import { getConnection, getHumanUser } from "../lib/connection.js";
+import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ChatMessage from "./ChatMessage.jsx";
-
-function timeAgo(timestamp) {
-  const diff = Date.now() - new Date(timestamp).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+import { timeAgo, stripChatDecorations } from "../lib/formatters.js";
 
 function formatSize(bytes) {
   if (bytes == null) return null;
@@ -27,7 +20,6 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-
 function authUrl(url) {
   const conn = getConnection();
   if (!conn) return url;
@@ -35,12 +27,26 @@ function authUrl(url) {
   return conn.serverUrl + url + sep + "token=" + conn.apiKey;
 }
 
-function stripChatDecorations(text) {
-  // Strip @workspace prefix
-  let cleaned = text.replace(/^@\S+\s/, "");
-  // Strip trailing context block
-  cleaned = cleaned.replace(/\n\n\(Context: reply to notification .+\)$/, "");
-  return cleaned;
+function FeedAudioItem({ att }) {
+  const { play, pause, playing, track } = useAudioPlayer();
+  const url = authUrl(att.url);
+  const isThisPlaying = playing && track?.url === url;
+
+  function handleClick() {
+    if (isThisPlaying) { pause(); return; }
+    play(url, att.label || "Audio", "audio");
+  }
+
+  return (
+    <div className="feed-item-audio" onClick={handleClick}>
+      {isThisPlaying ? (
+        <Pause size={14} fill="currentColor" className="feed-item-audio-icon" />
+      ) : (
+        <Play size={14} fill="currentColor" className="feed-item-audio-icon" />
+      )}
+      <span className="feed-item-audio-label">{att.label}</span>
+    </div>
+  );
 }
 
 export default function FeedDetailPanel({ item, onClose, onDismiss }) {
@@ -169,31 +175,26 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
     <div className={`feed-panel-backdrop ${visible ? "visible" : ""}`} onClick={handleClose}>
       <div className={`feed-panel ${visible ? "visible" : ""}`} onClick={(e) => e.stopPropagation()}>
         <div className="feed-panel-scroll">
-          <div className="feed-panel-top-actions">
-            {onDismiss && (
-              <button className="feed-panel-dismiss" onClick={() => { onDismiss(); handleClose(); }} aria-label="Dismiss">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-            <button className="feed-panel-close" onClick={handleClose} aria-label="Close">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
           <div className="feed-panel-header">
             <span className="feed-item-dot" style={{ backgroundColor: item.workspace_color }} />
             <span className="feed-item-workspace">{item.workspace_name}</span>
             <span className="feed-item-time">{timeAgo(item.timestamp)}</span>
+            {onDismiss && (
+              <button className="feed-panel-dismiss" onClick={(e) => { e.stopPropagation(); onDismiss(); handleClose(); }} aria-label="Dismiss">
+                <Check size={14} strokeWidth={2.5} />
+                <span>Dismiss</span>
+              </button>
+            )}
+            <button className="feed-panel-dismiss" onClick={handleClose} aria-label="Close">
+              <X size={14} />
+              <span>Close</span>
+            </button>
           </div>
 
           <h2 className="feed-panel-title">{item.title}</h2>
 
           <div className="feed-panel-body">
-            <Markdown rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
           </div>
 
           {images.length > 0 && (
@@ -213,10 +214,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
           {audioFiles.length > 0 && (
             <div className="feed-item-audio-list">
               {audioFiles.map((att, i) => (
-                <div key={i} className="feed-item-audio">
-                  <span className="feed-item-audio-label">{att.label}</span>
-                  <audio controls preload="none" src={authUrl(att.url)} />
-                </div>
+                <FeedAudioItem key={i} att={att} />
               ))}
             </div>
           )}
@@ -235,9 +233,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
                     <span className="file-chip-size">{formatSize(att.size)}</span>
                   )}
                   <span className="file-chip-download">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                    </svg>
+                    <Download size={14} />
                   </span>
                 </a>
               ))}
@@ -259,10 +255,10 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
             ) : (
               <>
                 <button className="action-btn" onClick={(e) => handleReaction("up", e)}>
-                  <span role="img" aria-label="thumbs up">&#x1F44D;</span>
+                  <ThumbsUp size={16} />
                 </button>
                 <button className="action-btn" onClick={(e) => handleReaction("down", e)}>
-                  <span role="img" aria-label="thumbs down">&#x1F44E;</span>
+                  <ThumbsDown size={16} />
                 </button>
               </>
             )}
@@ -300,9 +296,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
               autoComplete="off"
             />
             <button type="submit" disabled={!message.trim() || sending}>
-              <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-              </svg>
+              <Send size={20} fill="currentColor" />
             </button>
           </form>
         </div>

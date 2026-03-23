@@ -1,21 +1,8 @@
 import { useState, useEffect } from "react";
+import { ArrowLeft } from "lucide-react";
 import { listRooms, readRoom, getWorkspaceProfiles } from "../api/client.js";
 import { getHumanUser, getHumanDisplayName } from "../lib/connection.js";
-
-function timeAgo(timestamp) {
-  if (!timestamp) return "";
-  const diff = Date.now() - new Date(timestamp * 1000).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-function prettyName(slug) {
-  return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
+import { timeAgo, prettyName } from "../lib/formatters.js";
 
 function displayRoomName(name) {
   if (name.startsWith("dm:")) {
@@ -77,9 +64,7 @@ function RoomView({ roomName, perspective, onBack }) {
   return (
     <div className="room-view">
       <button className="room-back-btn" onClick={onBack}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
+        <ArrowLeft size={18} />
         {displayRoomName(roomName)}
       </button>
       <div className="room-messages">

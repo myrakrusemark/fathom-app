@@ -1,20 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Paperclip, X } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import { feedSanitizeSchema } from "../lib/sanitize.js";
 import { getConnection } from "../lib/connection.js";
-
-function timeAgo(timestamp) {
-  const diff = Date.now() - new Date(timestamp).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+import { timeAgo } from "../lib/formatters.js";
 
 function authUrl(url) {
   const conn = getConnection();
@@ -81,9 +73,7 @@ function StackedRow({ sub, onSelect, onDismiss, unread }) {
       <h3 className="feed-stacked-title">{sub.title}</h3>
       {sub.attachments?.length > 0 && (
         <span className="feed-stacked-attachments">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="11" height="11">
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-          </svg>
+          <Paperclip size={11} />
           {sub.attachments.length}
         </span>
       )}
@@ -94,9 +84,7 @@ function StackedRow({ sub, onSelect, onDismiss, unread }) {
           onClick={(e) => { e.stopPropagation(); onDismiss(sub.id); }}
           aria-label="Dismiss"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
+          <X size={12} />
         </button>
       )}
     </div>
@@ -222,9 +210,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
           onClick={(e) => { e.stopPropagation(); onDismiss(item.id); }}
           aria-label="Dismiss"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
+          <X size={14} />
         </button>
       )}
       <h3 className="feed-item-title">
@@ -232,7 +218,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
         {item.title}
       </h3>
       <div className="feed-item-body" onClick={(e) => { if (e.target.tagName === "A") e.stopPropagation(); }}>
-        <Markdown rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
+        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
       </div>
       {firstImage && (
         <div className="feed-item-images">
@@ -248,9 +234,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
         <span className="feed-item-workspace">{item.workspace_name}</span>
         {attachments.length > 0 && (
           <span className="feed-item-attachments">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-            </svg>
+            <Paperclip size={12} />
             {attachments.length}
           </span>
         )}
