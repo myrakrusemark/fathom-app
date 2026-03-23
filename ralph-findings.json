@@ -5,7 +5,7 @@
     "total_lines_added": 283,
     "total_bugs_fixed": 11,
     "total_tests_added": 37,
-    "iterations_completed": 11,
+    "iterations_completed": 12,
     "repos_cleaned": ["app"]
   },
   "findings": [
@@ -90,6 +90,16 @@
       "lines_removed": 0
     }
   ],
+    {
+      "date": "2026-03-23",
+      "perspective": "Accessibility",
+      "repo": "app",
+      "description": "aria-label on 6 unlabeled inputs/selects (scrubber, chat input, filters, selects); role=button+keyboard handler on Feed unread banner div; aria-label on Paperclip icon button.",
+      "type": "accessibility",
+      "files_changed": 6,
+      "lines_added": 8,
+      "lines_removed": 0
+    },
     {
       "date": "2026-03-23",
       "perspective": "Docker & DevOps",

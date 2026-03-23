@@ -15,7 +15,7 @@
 | 9. Cross-Repo Coherence | DONE |
 | 10. API Consistency | DONE |
 | 11. Docker & DevOps | DONE |
-| 12. Accessibility | - |
+| 12. Accessibility | DONE |
 | 13. Error Boundary Audit | - |
 | 14. Utility Consolidation | - |
 | 15. New Perspectives | - |
@@ -23,7 +23,7 @@
 
 ## Next Target
 
-Perspective 12: Accessibility / app
+Perspective 13: Error Boundary Audit / app
 
 ## Deferred Upgrades
 
@@ -33,6 +33,16 @@ Perspective 12: Accessibility / app
 | `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | Tied to Vite — upgrade together with Vite 8 |
 
 ## Log
+
+### 2026-03-23 — Perspective 12: Accessibility / app
+
+- **AudioPlayerBar** scrubber `type=range` was unlabeled — added `aria-label="Seek"`
+- **ChatSheet** message input: `aria-label="Message"`; Paperclip icon button: `aria-label="Attach file"`
+- **Comms** perspective select: `aria-label="View perspective"`
+- **Vault** search input: `aria-label="Search vault"`; workspace select: `aria-label="Workspace"`
+- **Routines** filter input: `aria-label="Filter routines"`
+- **Feed** unread banner div: added `role="button"`, `tabIndex={0}`, `onKeyDown` Enter handler — was click-only, inaccessible to keyboard users
+- **Deferred**: workspace card divs (complex layout implications), chat bubble audio/expand divs (low priority, content-area interaction)
 
 ### 2026-03-23 — Perspective 11: Docker & DevOps / app
 
