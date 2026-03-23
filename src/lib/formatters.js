@@ -53,6 +53,14 @@ export function stripChatDecorations(text) {
   return cleaned;
 }
 
+/** Human-readable file size: "1.4 KB", "3.2 MB", etc. */
+export function formatSize(bytes) {
+  if (bytes == null) return null;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /**
  * Append ?token= (or &token=) auth param to a server-relative URL.
  * Safe to use in img src, audio src, and download href attributes.

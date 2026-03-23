@@ -11,14 +11,7 @@ import { sendReaction, postToRoom, readRoom } from "../api/client.js";
 import { getHumanUser } from "../lib/connection.js";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ChatMessage from "./ChatMessage.jsx";
-import { timeAgo, stripChatDecorations, authUrl } from "../lib/formatters.js";
-
-function formatSize(bytes) {
-  if (bytes == null) return null;
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+import { timeAgo, stripChatDecorations, authUrl, formatSize } from "../lib/formatters.js";
 
 function FeedAudioItem({ att }) {
   const { play, pause, playing, track } = useAudioPlayer();

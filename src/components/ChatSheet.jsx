@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, Paperclip, Send } from "lucide-react";
 import { getWsUrl, getWorkspace, sendMessage, uploadAttachment, sendDm, pollDmRoom } from "../api/client.js";
 import { getHumanUser } from "../lib/connection.js";
-import ChatMessage, { ToolGroup, formatSize } from "./ChatMessage.jsx";
+import ChatMessage, { ToolGroup } from "./ChatMessage.jsx";
+import { formatSize } from "../lib/formatters.js";
 
 function FreshChatMessages() {
   return [

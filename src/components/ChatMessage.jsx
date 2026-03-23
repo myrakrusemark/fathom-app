@@ -4,7 +4,7 @@ import { Play, Pause, Mic, Wrench, Clock, ChevronDown, Check, Image } from "luci
 import { getConnection } from "../lib/connection.js";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ThoughtBubble from "./ThoughtBubble.jsx";
-import { timeAgo, authUrl } from "../lib/formatters.js";
+import { timeAgo, authUrl, formatSize } from "../lib/formatters.js";
 
 export function renderMarkdown(text) {
   if (!text) return null;
@@ -74,13 +74,6 @@ function inlineMarkdown(text) {
     tokens.push(text.slice(lastIndex));
   }
   return tokens;
-}
-
-export function formatSize(bytes) {
-  if (bytes == null) return null;
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function typeIcon(type) {
