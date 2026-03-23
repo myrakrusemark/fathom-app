@@ -4,7 +4,7 @@ import { Play, Pause, Mic, Wrench, Clock, ChevronDown, Check, Image } from "luci
 import { getConnection } from "../lib/connection.js";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ThoughtBubble from "./ThoughtBubble.jsx";
-import { timeAgo as timeAgoFn } from "../lib/formatters.js";
+import { timeAgo as timeAgoFn, authUrl } from "../lib/formatters.js";
 
 export function timeAgo(timestamp) {
   return timeAgoFn(timestamp, { short: true });
@@ -98,12 +98,6 @@ function typeIcon(type) {
   }
 }
 
-export function authUrl(url) {
-  const conn = getConnection();
-  if (!conn) return url;
-  const sep = url.includes("?") ? "&" : "?";
-  return conn.serverUrl + url + sep + "token=" + conn.apiKey;
-}
 
 const VOICE_BAR_HEIGHTS = [12, 8, 18, 6, 15, 10, 19, 7, 14, 11, 17, 9];
 

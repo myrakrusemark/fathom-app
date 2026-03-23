@@ -1,3 +1,5 @@
+import { getConnection } from "./connection.js";
+
 /**
  * Shared formatting utilities.
  *
@@ -49,4 +51,16 @@ export function stripChatDecorations(text) {
   let cleaned = text.replace(/^@\S+\s/, "");
   cleaned = cleaned.replace(/\n\n\(Context: reply to notification .+\)$/, "");
   return cleaned;
+}
+
+/**
+ * Append ?token= (or &token=) auth param to a server-relative URL.
+ * Safe to use in img src, audio src, and download href attributes.
+ * Falls back to the original URL if not connected.
+ */
+export function authUrl(url) {
+  const conn = getConnection();
+  if (!conn) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return conn.serverUrl + url + sep + "token=" + conn.apiKey;
 }

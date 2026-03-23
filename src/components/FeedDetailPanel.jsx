@@ -8,23 +8,16 @@ import { feedSanitizeSchema } from "../lib/sanitize.js";
 import PhotoSwipeLightbox from "photoswipe/lightbox";
 import "photoswipe/style.css";
 import { sendReaction, postToRoom, readRoom } from "../api/client.js";
-import { getConnection, getHumanUser } from "../lib/connection.js";
+import { getHumanUser } from "../lib/connection.js";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ChatMessage from "./ChatMessage.jsx";
-import { timeAgo, stripChatDecorations } from "../lib/formatters.js";
+import { timeAgo, stripChatDecorations, authUrl } from "../lib/formatters.js";
 
 function formatSize(bytes) {
   if (bytes == null) return null;
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function authUrl(url) {
-  const conn = getConnection();
-  if (!conn) return url;
-  const sep = url.includes("?") ? "&" : "?";
-  return conn.serverUrl + url + sep + "token=" + conn.apiKey;
 }
 
 function FeedAudioItem({ att }) {

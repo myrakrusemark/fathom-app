@@ -5,15 +5,7 @@ import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import { feedSanitizeSchema } from "../lib/sanitize.js";
-import { getConnection } from "../lib/connection.js";
-import { timeAgo } from "../lib/formatters.js";
-
-function authUrl(url) {
-  const conn = getConnection();
-  if (!conn) return url;
-  const sep = url.includes("?") ? "&" : "?";
-  return conn.serverUrl + url + sep + "token=" + conn.apiKey;
-}
+import { timeAgo, authUrl } from "../lib/formatters.js";
 
 const SWIPE_THRESHOLD = 100;
 const ROW_SWIPE_THRESHOLD = 80;
