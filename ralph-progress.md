@@ -16,14 +16,14 @@
 | 10. API Consistency | DONE |
 | 11. Docker & DevOps | DONE |
 | 12. Accessibility | DONE |
-| 13. Error Boundary Audit | - |
+| 13. Error Boundary Audit | DONE |
 | 14. Utility Consolidation | - |
 | 15. New Perspectives | - |
 | 16–25. UX Perspectives | - |
 
 ## Next Target
 
-Perspective 13: Error Boundary Audit / app
+Perspective 14: Utility Consolidation / app
 
 ## Deferred Upgrades
 
@@ -33,6 +33,18 @@ Perspective 13: Error Boundary Audit / app
 | `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | Tied to Vite — upgrade together with Vite 8 |
 
 ## Log
+
+### 2026-03-23 — Perspective 13: Error Boundary Audit / app
+
+Mapped all 60+ catch handlers across the codebase. Categorized into acceptable silent failures (background polls, optional features) vs. user-action failures that should surface errors.
+
+**Fixed:**
+- `PackageRow`: install/uninstall silently swallowed errors — added `pkgError` state, displayed below buttons (user now sees "Install failed: ..." on error)
+- `App.jsx submitOnboarding`: `.catch(() => {})` → `.catch(console.error)` — failure now visible in devtools
+- `Routines.jsx RoutineDetailPanel.handleFire` (×2): `try/finally` with no `catch` → added `catch(err) { console.error(err); }` — was unhandled rejection
+- `Workspaces.jsx WorkspaceDetailPanel.handleFire`: no error handling at all → wrapped in try/catch
+
+**Verified acceptable silent failures (~30 handlers):** background polls (DM unread, theme, wallpaper, room list, browser sessions, permissions), optional fire-and-forget ops (scout routine), WebSocket parse errors, DM polling errors, SetupPackages install polling.
 
 ### 2026-03-23 — Perspective 12: Accessibility / app
 

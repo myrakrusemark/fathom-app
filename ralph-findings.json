@@ -3,9 +3,9 @@
   "summary": {
     "total_lines_removed": 431,
     "total_lines_added": 283,
-    "total_bugs_fixed": 11,
+    "total_bugs_fixed": 15,
     "total_tests_added": 37,
-    "iterations_completed": 12,
+    "iterations_completed": 13,
     "repos_cleaned": ["app"]
   },
   "findings": [
@@ -90,6 +90,16 @@
       "lines_removed": 0
     }
   ],
+    {
+      "date": "2026-03-23",
+      "perspective": "Error Boundary Audit",
+      "repo": "app",
+      "description": "4 bugs fixed: PackageRow install/uninstall silently swallowed errors (added pkgError state); App.jsx submitOnboarding .catch(()=>{}) -> console.error; Routines.jsx 2x handleFire try/finally with no catch (unhandled rejections); Workspaces.jsx handleFire with no error handling. ~30 silent catches verified as acceptable background polls.",
+      "type": "bug",
+      "files_changed": 4,
+      "lines_added": 14,
+      "lines_removed": 3
+    },
     {
       "date": "2026-03-23",
       "perspective": "Accessibility",
