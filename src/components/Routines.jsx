@@ -299,6 +299,7 @@ export default function Routines({ embedded = false }) {
           placeholder="Filter routines..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
+          aria-label="Filter routines"
         />
         <div className="routines-filter-chips">
           <button

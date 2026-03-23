@@ -176,7 +176,7 @@ export default function Feed({
 
       <>
           {unreadCount > 0 && (
-            <div className="feed-unread-banner" onClick={onChatOpen}>
+            <div className="feed-unread-banner" role="button" tabIndex={0} onClick={onChatOpen} onKeyDown={(e) => e.key === "Enter" && onChatOpen()}>
               <MessageCircle size={16} />
               <span>{unreadCount} new {unreadCount === 1 ? "message" : "messages"} from fathom</span>
             </div>

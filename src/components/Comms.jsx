@@ -179,6 +179,7 @@ export default function Comms() {
         </div>
         <select
           className="comms-perspective-select"
+          aria-label="View perspective"
           value={perspective}
           onChange={(e) => handlePerspectiveChange(e.target.value)}
         >

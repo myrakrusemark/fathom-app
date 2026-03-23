@@ -819,6 +819,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
                 className="chat-attach-btn"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={sending}
+                aria-label="Attach file"
               >
                 <Paperclip size={20} />
               </button>
@@ -831,6 +832,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
               placeholder="say something..."
               disabled={sending}
               autoComplete="off"
+              aria-label="Message"
             />
             <button type="submit" disabled={!input.trim() || sending}>
               <Send size={20} fill="currentColor" />

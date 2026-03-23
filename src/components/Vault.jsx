@@ -203,6 +203,7 @@ export default function Vault() {
           value={searchQuery}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Search vault..."
+          aria-label="Search vault"
         />
         <div className="comms-filter-bar">
           {!isSearching && (
@@ -220,6 +221,7 @@ export default function Vault() {
           )}
           <select
             className="comms-perspective-select"
+            aria-label="Workspace"
             value={workspace}
             onChange={(e) => setWorkspace(e.target.value)}
           >
