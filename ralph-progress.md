@@ -10,7 +10,7 @@
 | 4. Quality Scaffold | DONE |
 | 5. Test Creation | DONE |
 | 6. Security Review | DONE |
-| 7. Performance | - |
+| 7. Performance | DONE |
 | 8. Dependency Audit | - |
 | 9. Cross-Repo Coherence | - |
 | 10. API Consistency | - |
@@ -23,9 +23,17 @@
 
 ## Next Target
 
-Perspective 7: Performance / app
+Perspective 8: Dependency Audit / app
 
 ## Log
+
+### 2026-03-23 — Perspective 7: Performance / app
+
+- **Memoized `stackByWorkspace(newItems)`** in Feed.jsx — was recomputing on every render (badge updates, wallpaper changes); now only runs when feed items change
+- **Memoized message grouping** in ChatSheet.jsx — replaced inline IIFE with `useMemo([messages])`; O(n) JSX work now skips on scroll/focus/isProcessing renders
+- **Removed redundant `body.style` writes** in App.jsx Effect 2 — 4 duplicate DOM writes (backgroundImage/Size/Position/Attachment) that Effect 1 already covers
+- **Stable keys in Comms RoomView** — `key={msg.id || sender+timestamp}` instead of index
+- Bundle: 714KB main chunk; react-markdown pulled in by FeedItem (initial paint), so can't defer it without a bigger refactor. Photoswipe already split by Vite.
 
 ### 2026-03-23 — Perspective 6: Security Review / app
 

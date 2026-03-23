@@ -1,11 +1,11 @@
 {
   "version": 1,
   "summary": {
-    "total_lines_removed": 362,
-    "total_lines_added": 250,
-    "total_bugs_fixed": 8,
+    "total_lines_removed": 398,
+    "total_lines_added": 283,
+    "total_bugs_fixed": 9,
     "total_tests_added": 37,
-    "iterations_completed": 6,
+    "iterations_completed": 7,
     "repos_cleaned": ["app"]
   },
   "findings": [
@@ -68,6 +68,16 @@
       "files_changed": 6,
       "lines_added": 19,
       "lines_removed": 16
+    },
+    {
+      "date": "2026-03-23",
+      "perspective": "Performance",
+      "repo": "app",
+      "description": "Memoized stackByWorkspace in Feed.jsx; memoized message grouper in ChatSheet.jsx; removed 4 redundant body style writes in App.jsx; stable keys in Comms RoomView",
+      "type": "performance",
+      "files_changed": 4,
+      "lines_added": 33,
+      "lines_removed": 36
     }
   ],
   "consolidation_targets": {
