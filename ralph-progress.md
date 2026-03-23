@@ -14,7 +14,7 @@
 | 8. Dependency Audit | DONE |
 | 9. Cross-Repo Coherence | DONE |
 | 10. API Consistency | DONE |
-| 11. Docker & DevOps | - |
+| 11. Docker & DevOps | DONE |
 | 12. Accessibility | - |
 | 13. Error Boundary Audit | - |
 | 14. Utility Consolidation | - |
@@ -23,7 +23,7 @@
 
 ## Next Target
 
-Perspective 11: Docker & DevOps / app
+Perspective 12: Accessibility / app
 
 ## Deferred Upgrades
 
@@ -33,6 +33,13 @@ Perspective 11: Docker & DevOps / app
 | `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | Tied to Vite — upgrade together with Vite 8 |
 
 ## Log
+
+### 2026-03-23 — Perspective 11: Docker & DevOps / app
+
+- **.dockerignore expanded**: added *.md, ralph-*.json, .env*, coverage — keeps audit/docs out of the build image
+- **gzip enabled in nginx.conf**: js/css/json/svg compressed (714KB main chunk → ~200KB over wire)
+- **Security headers added to nginx**: X-Content-Type-Options nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy strict-origin-when-cross-origin (HTTP-level, stronger than meta tags)
+- **Dockerfile**: already clean — node:22-alpine build, nginx:alpine serve, layer caching correct
 
 ### 2026-03-23 — Perspective 10: API Consistency / app
 
