@@ -19,11 +19,12 @@
 | 13. Error Boundary Audit | DONE |
 | 14. Utility Consolidation | DONE |
 | 15. New Perspectives | DONE |
-| 16–25. UX Perspectives | - |
+| 16. Feed Experience | DONE |
+| 17–25. UX Perspectives | - |
 
 ## Next Target
 
-Perspective 16: Feed Experience (UX proposals) / app
+Perspective 17: Chat & Conversation UX / app
 
 ## Deferred Upgrades
 
@@ -33,6 +34,17 @@ Perspective 16: Feed Experience (UX proposals) / app
 | `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | Tied to Vite — upgrade together with Vite 8 |
 
 ## Log
+
+### 2026-03-23 — Perspective 16: Feed Experience / app
+
+Quick wins committed:
+- Removed layout type from card footer ("standard · 2h ago" → "2h ago")
+- Space key added to unread banner (role=button ARIA compliance)
+
+9 proposals written to `ralph-ux-proposals.md`:
+- 5 quick-wins: skeleton loader, dismiss-all on stacked, left-rail unread dot, no-flicker empty state, compact truncation
+- 3 medium: Earlier clear-all, hero/featured visual differentiation, swipe-left to open
+- 1 big: pull-to-refresh
 
 ### 2026-03-23 — Perspective 15: New Perspectives / app
 
