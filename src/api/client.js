@@ -182,7 +182,7 @@ export function searchVault(query, workspace) {
 export function vaultRawUrl(filePath, workspace) {
   const conn = getConnection();
   if (!conn) return "";
-  return `${conn.serverUrl}/api/vault/raw/${filePath}?workspace=${encodeURIComponent(workspace)}&token=${conn.apiKey}`;
+  return `${conn.serverUrl}/api/vault/raw/${encodeURIComponent(filePath)}?workspace=${encodeURIComponent(workspace)}&token=${conn.apiKey}`;
 }
 
 export function getPendingPermissions() {
