@@ -73,7 +73,7 @@ function RoomView({ roomName, perspective, onBack }) {
           <div className="empty-state">No messages in the last 24 hours.</div>
         )}
         {messages.map((msg, i) => (
-          <div key={i} className="room-message">
+          <div key={msg.id || `${msg.sender}-${msg.timestamp || i}`} className="room-message">
             <span className="room-msg-sender">{msg.sender}</span>
             <span className="room-msg-text">{msg.message}</span>
             <span className="room-msg-time">{timeAgo(msg.timestamp)}</span>
