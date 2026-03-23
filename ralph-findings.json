@@ -5,7 +5,7 @@
     "total_lines_added": 283,
     "total_bugs_fixed": 9,
     "total_tests_added": 37,
-    "iterations_completed": 7,
+    "iterations_completed": 8,
     "repos_cleaned": ["app"]
   },
   "findings": [
@@ -78,6 +78,16 @@
       "files_changed": 4,
       "lines_added": 33,
       "lines_removed": 36
+    },
+    {
+      "date": "2026-03-23",
+      "perspective": "Dependency Audit",
+      "repo": "app",
+      "description": "0 vulnerabilities. Patched eslint + react-router-dom. Upgraded lucide-react 0.x→1.0.1 (no brand icons used). Deferred vite 6→8 and @vitejs/plugin-react 4→6 (Rolldown migration, low-risk when ready).",
+      "type": "deps",
+      "files_changed": 2,
+      "lines_added": 0,
+      "lines_removed": 0
     }
   ],
   "consolidation_targets": {

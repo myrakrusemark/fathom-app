@@ -11,7 +11,7 @@
 | 5. Test Creation | DONE |
 | 6. Security Review | DONE |
 | 7. Performance | DONE |
-| 8. Dependency Audit | - |
+| 8. Dependency Audit | DONE |
 | 9. Cross-Repo Coherence | - |
 | 10. API Consistency | - |
 | 11. Docker & DevOps | - |
@@ -23,9 +23,23 @@
 
 ## Next Target
 
-Perspective 8: Dependency Audit / app
+Perspective 9: Cross-Repo Coherence / app
+
+## Deferred Upgrades
+
+| Package | Current | Latest | Notes |
+|---------|---------|--------|-------|
+| `vite` | 6.4.1 | 8.0.2 | Vite 8 switches to Rolldown/Oxc; config is minimal so migration risk is low — run `npm install vite@8 @vitejs/plugin-react@6` + test |
+| `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | Tied to Vite — upgrade together with Vite 8 |
 
 ## Log
+
+### 2026-03-23 — Perspective 8: Dependency Audit / app
+
+- **0 vulnerabilities** — `npm audit` clean
+- **Patched**: `eslint` 10.0.3→10.1.0, `react-router-dom` 7.13.1→7.13.2
+- **Upgraded**: `lucide-react` 0.577.0→1.0.1 — only breaking change is brand icon removal; app uses zero brand icons. Build and lint pass.
+- **Deferred**: `vite` 6→8 (Rolldown/Oxc switch), `@vitejs/plugin-react` 4→6 (upgrade together with Vite). Config is minimal so migration risk is low.
 
 ### 2026-03-23 — Perspective 7: Performance / app
 
