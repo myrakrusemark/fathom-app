@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, Paperclip, Send } from "lucide-react";
 import { getWsUrl, getWorkspace, sendMessage, uploadAttachment, sendDm, pollDmRoom } from "../api/client.js";
 import { getHumanUser } from "../lib/connection.js";
@@ -727,6 +727,26 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
     }
   }
 
+  // Group consecutive tool messages — memoized to avoid O(n) JSX work on every render
+  const groupedMessages = useMemo(() => {
+    const grouped = [];
+    let i = 0;
+    while (i < messages.length) {
+      if (messages[i].type === "tool") {
+        const tools = [];
+        while (i < messages.length && messages[i].type === "tool") {
+          tools.push(messages[i]);
+          i++;
+        }
+        grouped.push(<ToolGroup key={tools[0].id} tools={tools} />);
+      } else {
+        grouped.push(<ChatMessage key={messages[i].id} msg={messages[i]} />);
+        i++;
+      }
+    }
+    return grouped;
+  }, [messages]);
+
   return (
     <div
       ref={sheetRef}
@@ -749,24 +769,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
           </button>
         </div>
         <div className="chat-sheet-messages">
-          {(() => {
-            const grouped = [];
-            let i = 0;
-            while (i < messages.length) {
-              if (messages[i].type === "tool") {
-                const tools = [];
-                while (i < messages.length && messages[i].type === "tool") {
-                  tools.push(messages[i]);
-                  i++;
-                }
-                grouped.push(<ToolGroup key={tools[0].id} tools={tools} />);
-              } else {
-                grouped.push(<ChatMessage key={messages[i].id} msg={messages[i]} />);
-                i++;
-              }
-            }
-            return grouped;
-          })()}
+          {groupedMessages}
           {(isProcessing || waitingForReply) && (
             <div className="chat-working">
               <span className="chat-working-dot" />
