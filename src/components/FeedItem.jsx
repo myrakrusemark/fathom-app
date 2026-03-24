@@ -207,6 +207,10 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
 
   const attachments = item.attachments || [];
   const firstImage = attachments.find((a) => a.type === "image" && !a.placeholder && a.url);
+  // Top-level image field takes priority over first attachment image
+  const cardImage = item.image ? authUrl(item.image) : firstImage ? authUrl(firstImage.url) : null;
+  const cardImageAlt = item.image ? item.title : firstImage?.label;
+  const layout = item.layout || "standard";
 
   return (
     <article
@@ -229,17 +233,23 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
           <X size={14} />
         </button>
       )}
+      {cardImage && (layout === "hero" || layout === "featured") && (
+        <div className={`feed-item-hero-image${layout === "featured" ? " feed-item-featured-image" : ""}`}>
+          <img src={cardImage} alt={cardImageAlt} loading="lazy" crossOrigin="anonymous" />
+        </div>
+      )}
       <h3 className="feed-item-title">{item.title}</h3>
       <div className="feed-item-body" onClick={(e) => { if (e.target.tagName === "A") e.stopPropagation(); }}>
         <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
       </div>
-      {firstImage && (
+      {cardImage && layout === "standard" && (
         <div className="feed-item-images">
           <img
             className="feed-item-image"
-            src={authUrl(firstImage.url)}
-            alt={firstImage.label}
+            src={cardImage}
+            alt={cardImageAlt}
             loading="lazy"
+            crossOrigin="anonymous"
           />
         </div>
       )}

@@ -179,6 +179,12 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
 
           <h2 className="feed-panel-title">{item.title}</h2>
 
+          {item.image && (
+            <div className="feed-panel-hero-image">
+              <img src={authUrl(item.image)} alt={item.title} loading="lazy" crossOrigin="anonymous" />
+            </div>
+          )}
+
           <div className="feed-panel-body">
             <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
           </div>
