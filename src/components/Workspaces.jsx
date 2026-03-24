@@ -32,8 +32,8 @@ function BrowserTabs({ sessions, vncUrl }) {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="browser-tab-info">
-            <span className="browser-tab-title">{s.id}</span>
-            <span className="browser-tab-url">{s["browser-type"] || "chrome"} &middot; {s.headed === "true" ? "headed" : "headless"}</span>
+            <span className="browser-tab-title">{s.title || s.id}</span>
+            <span className="browser-tab-url">{s.url || `${s["browser-type"] || "chrome"} · ${s.headed === "true" ? "headed" : "headless"}`}</span>
           </div>
           <span className="browser-tab-debug">vnc</span>
         </a>
@@ -281,7 +281,7 @@ export default function Workspaces({ onOpenChat }) {
           isPrimary={name === defaultWorkspace}
           onSelect={(n, w) => setSelected({ name: n, workspace: w })}
           onOpenChat={onOpenChat}
-          browserSessions={ws.browser ? browserSessions.filter((s) => s.workspace === name) : []}
+          browserSessions={ws.browser ? browserSessions.filter((s) => s.workspace === name || s.workspace.startsWith(name + "-")) : []}
           vncUrl={vncUrl}
         />
       ))}
