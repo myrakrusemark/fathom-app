@@ -3950,9 +3950,13 @@ body {
 }
 .browser-tabs {
   margin: -6px 0 8px 0;
-  border-top: 1px solid var(--border, rgba(0,0,0,0.08));
-  background: var(--bg-card-alt, rgba(0,0,0,0.04));
+  border-top: 1px solid var(--glass-border, rgba(0,0,0,0.08));
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   border-radius: 0 0 var(--radius) var(--radius);
+  border: 1px solid var(--glass-border);
+  border-top: none;
 }
 .browser-tab {
   display: flex;
@@ -3960,15 +3964,15 @@ body {
   gap: 8px;
   padding: 8px 14px;
   text-decoration: none;
-  color: var(--text-primary, #1a1a2e);
-  border-top: 1px solid var(--border, rgba(0,0,0,0.06));
+  color: var(--text-primary, #eee);
+  border-top: 1px solid var(--glass-border, rgba(255,255,255,0.06));
   transition: background 0.15s;
 }
 .browser-tab:first-child {
   border-top: none;
 }
 .browser-tab:hover {
-  background: rgba(0,0,0,0.05);
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
 }
 .browser-tab-favicon {
   width: 14px;
@@ -3991,7 +3995,7 @@ body {
 }
 .browser-tab-url {
   font-size: 10px;
-  color: var(--text-muted, #888);
+  color: var(--text-secondary, rgba(255, 255, 255, 0.5));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
