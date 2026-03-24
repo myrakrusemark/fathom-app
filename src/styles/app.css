@@ -1215,6 +1215,8 @@ body {
 .routines-filter-chips {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 .routines-chip {
   font-size: 11px;
@@ -1234,6 +1236,13 @@ body {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
+}
+.routines-filter-separator {
+  width: 1px;
+  height: 16px;
+  background: var(--glass-border);
+  align-self: center;
+  flex-shrink: 0;
 }
 
 .routines-section-label {

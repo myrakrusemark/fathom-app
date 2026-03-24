@@ -9,13 +9,16 @@ Fathom App is a React PWA dashboard for the Fathom distributed agent system. It 
 ## Commands
 
 ```bash
-npm run dev      # Vite dev server (proxies /api → localhost:4243)
-npm run build    # Production build → dist/
-npm run preview  # Preview production build
-npx eslint .     # Lint (flat config, React hooks + refresh plugins)
+npm run dev          # Vite dev server (proxies /api → localhost:4243)
+npm run build        # Production build → dist/
+npm run preview      # Preview production build
+npx eslint .         # Lint (flat config, React hooks + refresh plugins)
+npm test             # Run all tests (vitest)
+npm run test:watch   # Watch mode
+npx vitest run src/test/formatters.test.js  # Single test file
 ```
 
-No test framework is configured.
+Tests use Vitest + jsdom + @testing-library/react. Test files live in `src/test/`. Setup in `src/test/setup.js`.
 
 ## Architecture
 
@@ -41,6 +44,8 @@ No test framework is configured.
 **Lib utilities** (`src/lib/`):
 - `connection.js`: `getConnection()`, `saveConnection()`, `isConnected()`, `detectSameOrigin()` — encapsulates all `fathom_connection` localStorage access; prefer these over direct localStorage reads
 - `sanitize.js`: rehype-sanitize schema for safe HTML rendering in feed cards
+- `formatters.js`: `timeAgo()`, `timeUntil()`, `formatTimestamp()`, `prettyName()`, `authUrl()`, `formatSize()` — shared display helpers used across components
+- `theme.js`: `applyTheme(themeId)` — injects/swaps a `<link>` to `/api/themes/{id}.css`; themes are CSS files served by the backend, not bundled
 
 **Styling** (`src/styles/app.css`): Glass morphism design system using CSS variables (`--bg-card`, `--glass-blur`, `--accent`, `--radius`). Mobile-first with safe-area-inset support. Eight atmosphere themes defined in `src/data/atmospheres.js`.
 
@@ -53,7 +58,8 @@ Docker multi-stage: Node 22 Alpine build → Nginx Alpine serving `dist/` on por
 ## Conventions
 
 - JavaScript only (no TypeScript), ES modules throughout
-- ESLint: `no-unused-vars` allows uppercase/underscore-prefixed vars; `react-hooks/set-state-in-effect` is a warning
+- ESLint: `no-unused-vars` allows uppercase/underscore-prefixed vars; `react-hooks/set-state-in-effect` is a warning; `no-console` warns (only `console.error` and `console.warn` allowed)
+- Husky + lint-staged: pre-commit hook runs `eslint --max-warnings=0` on staged `.js`/`.jsx` files
 - `npm ci --legacy-peer-deps` required for install (peer dep conflicts)
 - HTML in feed notifications is sanitized via `rehype-sanitize` with a custom schema (`src/lib/sanitize.js`)
 - Voice input uses the native `SpeechRecognition` API (browser support required)

@@ -247,6 +247,7 @@ export default function Routines({ embedded = false }) {
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState("");
   const [condFilter, setCondFilter] = useState("all"); // "all" | "cond" | "uncond"
+  const [groupBy, setGroupBy] = useState("status"); // "status" | "workspace"
 
   function load() {
     getRoutines()
@@ -291,6 +292,22 @@ export default function Routines({ embedded = false }) {
   const upcoming = applyFilters(data.upcoming);
   const disabled = applyFilters(data.disabled);
 
+  // Group all filtered routines by workspace
+  function groupByWorkspace() {
+    const all = [...recent, ...upcoming, ...disabled];
+    const groups = {};
+    for (const r of all) {
+      const key = r.workspace || "unknown";
+      if (!groups[key]) {
+        groups[key] = { name: r.workspace_name || key, color: r.workspace_color || "#888", routines: [] };
+      }
+      groups[key].routines.push(r);
+    }
+    return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const hasResults = recent.length > 0 || upcoming.length > 0 || disabled.length > 0;
+
   const routinesList = (
     <div className="routines-list">
       <div className="config-banner">
@@ -318,33 +335,62 @@ export default function Routines({ embedded = false }) {
             className={`routines-chip ${condFilter === "uncond" ? "active" : ""}`}
             onClick={() => setCondFilter("uncond")}
           >scheduled</button>
+          <span className="routines-filter-separator" />
+          <button
+            className={`routines-chip ${groupBy === "status" ? "active" : ""}`}
+            onClick={() => setGroupBy("status")}
+          >by status</button>
+          <button
+            className={`routines-chip ${groupBy === "workspace" ? "active" : ""}`}
+            onClick={() => setGroupBy("workspace")}
+          >by workspace</button>
         </div>
       </div>
-      {recent.length > 0 && (
-        <section>
-          <h2 className="routines-section-label">recently fired</h2>
-          {recent.map((r) => (
-            <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
+      {groupBy === "status" ? (
+        <>
+          {recent.length > 0 && (
+            <section>
+              <h2 className="routines-section-label">recently fired</h2>
+              {recent.map((r) => (
+                <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
+              ))}
+            </section>
+          )}
+          {upcoming.length > 0 && (
+            <section>
+              <h2 className="routines-section-label">upcoming</h2>
+              {upcoming.map((r) => (
+                <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
+              ))}
+            </section>
+          )}
+          {disabled.length > 0 && (
+            <section>
+              <h2 className="routines-section-label">disabled</h2>
+              {disabled.map((r) => (
+                <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
+              ))}
+            </section>
+          )}
+        </>
+      ) : (
+        <>
+          {groupByWorkspace().map((group) => (
+            <section key={group.name}>
+              <h2 className="routines-section-label">
+                <span className="workspace-group-header">
+                  <span className="workspace-dot" style={{ background: group.color }} />
+                  {group.name}
+                </span>
+              </h2>
+              {group.routines.map((r) => (
+                <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
+              ))}
+            </section>
           ))}
-        </section>
+        </>
       )}
-      {upcoming.length > 0 && (
-        <section>
-          <h2 className="routines-section-label">upcoming</h2>
-          {upcoming.map((r) => (
-            <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
-          ))}
-        </section>
-      )}
-      {disabled.length > 0 && (
-        <section>
-          <h2 className="routines-section-label">disabled</h2>
-          {disabled.map((r) => (
-            <RoutineRow key={r.id} routine={r} onFire={handleFire} onSelect={setSelected} />
-          ))}
-        </section>
-      )}
-      {(filter || condFilter !== "all") && recent.length === 0 && upcoming.length === 0 && disabled.length === 0 && (
+      {(filter || condFilter !== "all") && !hasResults && (
         <div className="empty-state">No matching routines</div>
       )}
     </div>
