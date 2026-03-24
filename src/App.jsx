@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { isConnected, detectSameOrigin, saveConnection, getConnection } from "./lib/connection.js";
 import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm, getThemes, readRoom } from "./api/client.js";
+import { applyTheme } from "./lib/theme.js";
 import Feed from "./components/Feed.jsx";
 import Routines from "./components/Routines.jsx";
 import Backstage from "./components/Backstage.jsx";
@@ -26,7 +27,6 @@ export default function App() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [themes, setThemes] = useState([]);
   const [themeName, setThemeName] = useState(() => localStorage.getItem('fathom-theme') || null);
-  const appliedVars = useRef([]);
   const [showBackstage, setShowBackstage] = useState(() => localStorage.getItem('fathom-show-backstage') === 'true');
 
   // Setup phase: "loading" | "packages" | "onboarding" | "done"
@@ -110,42 +110,19 @@ export default function App() {
   // Wallpaper: fetch latest from #wallpaper room
   const [wallpaper, setWallpaper] = useState(null);
 
-  // Apply selected theme (or revert to default); re-apply wallpaper after since
-  // setting body.style.background (shorthand) resets backgroundImage
+  // Apply selected theme via cascading CSS <link>, then re-apply wallpaper image
   useEffect(() => {
-    const theme = themes.find((t) => t.id === themeName);
-    // Clear previously applied overrides
-    for (const prop of appliedVars.current) {
-      document.documentElement.style.removeProperty(prop);
-    }
-    appliedVars.current = [];
-
-    if (!theme) {
-      document.body.style.background = "";
-      document.body.style.backgroundAttachment = "";
-      document.body.style.color = "";
-      document.documentElement.style.removeProperty("--text");
-      localStorage.removeItem("fathom-theme");
-    } else {
-      document.body.style.background = theme.bg;
-      document.body.style.backgroundAttachment = "fixed";
-      document.body.style.color = theme.text || "";
-      document.documentElement.style.setProperty("--text", theme.text || "#1a1a2e");
-      appliedVars.current.push("--text");
-      for (const [prop, val] of Object.entries(theme.variables || {})) {
-        document.documentElement.style.setProperty(prop, val);
-        appliedVars.current.push(prop);
-      }
-      localStorage.setItem("fathom-theme", themeName);
-    }
+    applyTheme(themeName);
 
     if (wallpaper?.url) {
       document.body.style.backgroundImage = `url(${wallpaper.url})`;
       document.body.style.backgroundSize = "cover";
       document.body.style.backgroundPosition = "center";
       document.body.style.backgroundAttachment = "fixed";
+    } else {
+      document.body.style.backgroundImage = "";
     }
-  }, [themeName, themes, wallpaper]);
+  }, [themeName, wallpaper]);
 
   useEffect(() => {
     if (!connected || setupPhase !== "done") return;

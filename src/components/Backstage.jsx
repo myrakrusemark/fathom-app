@@ -6,14 +6,14 @@ import Vault from "./Vault.jsx";
 import TabBar from "./TabBar.jsx";
 
 const TABS = [
-  { id: "routines", label: "Routines" },
   { id: "workspaces", label: "Workspaces" },
+  { id: "routines", label: "Routines" },
   { id: "comms", label: "Comms" },
   { id: "vault", label: "Vault" },
 ];
 
 export default function Backstage({ onOpenChat }) {
-  const [activeTab, setActiveTab] = useState("routines");
+  const [activeTab, setActiveTab] = useState("workspaces");
 
   return (
     <div className="page">
