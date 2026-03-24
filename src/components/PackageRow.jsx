@@ -5,15 +5,13 @@ import {
   provisionMementoKey,
   saveMementoCredentials,
   deleteMementoCredentials,
-  connectBrowserless,
-  disconnectBrowserless,
 } from "../api/client.js";
 
 const PKG_DESCRIPTIONS = {
   claude: "Your workspaces can't run without this. Configure credentials in docker-compose.yml to authenticate.",
   memento: null, // handled inline with logo
   tts: "One tap to install. Gives your agent a voice for replies, notifications, and podcasts.",
-  browserless: "Headless Chrome for web browsing. Set browser: true in workspaces.json to enable per-workspace.",
+  browser: "Playwright + virtual desktop. Gives agents isolated browser sessions you can monitor via VNC.",
 };
 
 export default function PackageRow({ pkg, onReload, showLogo = false }) {
@@ -29,11 +27,6 @@ export default function PackageRow({ pkg, onReload, showLogo = false }) {
 
   // Claude info expand state
   const [claudeInfoOpen, setClaudeInfoOpen] = useState(false);
-
-  // Browserless connection state
-  const [blEndpoint, setBlEndpoint] = useState("");
-  const [blConnecting, setBlConnecting] = useState(false);
-  const [blError, setBlError] = useState("");
 
   // Install/uninstall error
   const [pkgError, setPkgError] = useState("");
@@ -85,14 +78,6 @@ export default function PackageRow({ pkg, onReload, showLogo = false }) {
               <span className="settings-pkg-status" style={{ color: "var(--accent, #6c63ff)" }}>configured</span>
             ) : (
               <span className="settings-pkg-status" style={{ color: "var(--text-secondary, #888)" }}>not configured</span>
-            )
-          ) : pkg.external ? (
-            pkg.status === "installed" ? (
-              <span className="settings-pkg-status" style={{ color: "var(--accent, #6c63ff)" }}>connected</span>
-            ) : pkg.ws_endpoint ? (
-              <span className="settings-pkg-status" style={{ color: "var(--error, #e53e3e)" }}>not reachable</span>
-            ) : (
-              <span className="settings-pkg-status" style={{ color: "var(--text-secondary, #888)" }}>not connected</span>
             )
           ) : pkg.status === "installed" ? (
             <button className="settings-pkg-btn uninstall" onClick={handleUninstall}>Uninstall</button>
@@ -239,80 +224,6 @@ export default function PackageRow({ pkg, onReload, showLogo = false }) {
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Browserless — connected */}
-      {pkg.name === "browserless" && pkg.status === "installed" && (
-        <div className="settings-claude-auth authenticated">
-          <span className="settings-claude-auth-label">
-            Connected
-            <span className="settings-claude-auth-method">
-              at {pkg.ws_endpoint}
-            </span>
-          </span>
-          <span className="settings-claude-auth-actions">
-            <button
-              className="danger"
-              onClick={async () => {
-                if (!confirm("Disconnect Browserless?")) return;
-                try { await disconnectBrowserless(); onReload(); } catch { /* silent */ }
-              }}
-            >
-              Disconnect
-            </button>
-          </span>
-        </div>
-      )}
-
-      {/* Browserless — not connected */}
-      {pkg.name === "browserless" && pkg.status !== "installed" && (
-        <div className="settings-claude-auth unauthenticated">
-          <p className="settings-claude-auth-help" style={{ margin: "0.25rem 0 0.5rem" }}>
-            Add the browserless service to your <code style={{ cursor: "auto" }}>docker-compose.yml</code>:
-          </p>
-          <pre style={{
-            fontSize: "0.75rem", background: "rgba(0,0,0,0.04)", borderRadius: "6px",
-            padding: "0.5rem 0.75rem", margin: "0 0 0.5rem", overflowX: "auto",
-            border: "1px solid rgba(255,255,255,0.06)",
-          }}>{`browserless:
-  image: ghcr.io/browserless/chromium
-  restart: unless-stopped
-  ports:
-    - "3000:3000"
-  environment:
-    - TIMEOUT=300000
-    - CONCURRENT=5
-    - HEALTH=true`}</pre>
-          <div className="settings-claude-auth-form">
-            <input
-              type="text"
-              placeholder="ws://browserless:3000"
-              value={blEndpoint}
-              onChange={(e) => { setBlEndpoint(e.target.value); setBlError(""); }}
-            />
-            <button
-              disabled={!blEndpoint || blConnecting}
-              onClick={async () => {
-                setBlConnecting(true);
-                setBlError("");
-                try {
-                  const res = await connectBrowserless(blEndpoint);
-                  if (res.error) { setBlError(res.error); return; }
-                  if (!res.connected) { setBlError("Endpoint not reachable"); return; }
-                  setBlEndpoint("");
-                  onReload();
-                } catch {
-                  setBlError("Failed to connect");
-                } finally {
-                  setBlConnecting(false);
-                }
-              }}
-            >
-              {blConnecting ? "..." : "Connect"}
-            </button>
-          </div>
-          {blError && <p className="settings-claude-auth-error">{blError}</p>}
         </div>
       )}
 

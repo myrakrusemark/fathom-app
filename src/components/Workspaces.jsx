@@ -18,7 +18,7 @@ function getProfileStatus(profile) {
 }
 
 
-function BrowserTabs({ sessions }) {
+function BrowserTabs({ sessions, vncUrl }) {
   if (!sessions || sessions.length === 0) return null;
   return (
     <div className="browser-tabs">
@@ -26,24 +26,23 @@ function BrowserTabs({ sessions }) {
         <a
           key={s.id}
           className="browser-tab"
-          href={s.debug_url}
+          href={vncUrl || "#"}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
         >
-          {s.favicon && <img className="browser-tab-favicon" src={s.favicon} alt="" />}
           <div className="browser-tab-info">
-            <span className="browser-tab-title">{s.title || "Untitled"}</span>
-            <span className="browser-tab-url">{s.url}</span>
+            <span className="browser-tab-title">{s.id}</span>
+            <span className="browser-tab-url">{s["browser-type"] || "chrome"} &middot; {s.headed === "true" ? "headed" : "headless"}</span>
           </div>
-          <span className="browser-tab-debug">inspect</span>
+          <span className="browser-tab-debug">vnc</span>
         </a>
       ))}
     </div>
   );
 }
 
-function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions, isPrimary }) {
+function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions, vncUrl, isPrimary }) {
   if (workspace.type === "human") return null;
 
   const wsColor = workspace.color || "#888";
@@ -84,7 +83,7 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions,
         </div>
         {description && <p className="workspace-card-desc">{description}</p>}
       </div>
-      {workspace.browser && <BrowserTabs sessions={browserSessions} />}
+      {workspace.browser && <BrowserTabs sessions={browserSessions} vncUrl={vncUrl} />}
     </div>
   );
 }
@@ -236,15 +235,22 @@ export default function Workspaces({ onOpenChat }) {
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [browserSessions, setBrowserSessions] = useState([]);
+  const [vncUrl, setVncUrl] = useState("");
 
   useEffect(() => {
     getWorkspaceProfiles()
       .then((data) => setWorkspaces(data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-    getBrowserSessions().then((data) => setBrowserSessions(data.sessions || [])).catch(() => {});
+    getBrowserSessions().then((data) => {
+      setBrowserSessions(data.sessions || []);
+      if (data.vnc_url) setVncUrl(data.vnc_url);
+    }).catch(() => {});
     const interval = setInterval(() => {
-      getBrowserSessions().then((data) => setBrowserSessions(data.sessions || [])).catch(() => {});
+      getBrowserSessions().then((data) => {
+        setBrowserSessions(data.sessions || []);
+        if (data.vnc_url) setVncUrl(data.vnc_url);
+      }).catch(() => {});
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -275,7 +281,8 @@ export default function Workspaces({ onOpenChat }) {
           isPrimary={name === defaultWorkspace}
           onSelect={(n, w) => setSelected({ name: n, workspace: w })}
           onOpenChat={onOpenChat}
-          browserSessions={ws.browser ? browserSessions : []}
+          browserSessions={ws.browser ? browserSessions.filter((s) => s.workspace === name) : []}
+          vncUrl={vncUrl}
         />
       ))}
       {selected && (

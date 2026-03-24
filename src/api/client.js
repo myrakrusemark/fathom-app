@@ -219,18 +219,6 @@ export function deleteMementoCredentials() {
   return request("/api/packages/memento/credentials", { method: "DELETE" });
 }
 
-export function connectBrowserless(wsEndpoint) {
-  return request("/api/packages/browserless/connect", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ws_endpoint: wsEndpoint }),
-  });
-}
-
-export function disconnectBrowserless() {
-  return request("/api/packages/browserless/connect", { method: "DELETE" });
-}
-
 export function submitOnboarding(name, interests) {
   const conn = getConnection();
   if (!conn) throw new Error("Not connected");
