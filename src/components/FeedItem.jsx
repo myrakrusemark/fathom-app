@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Paperclip, X } from "lucide-react";
+import { Paperclip, MessageCircle, X } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
+import rehypeKatex from "rehype-katex";
 import rehypeSanitize from "rehype-sanitize";
 import { feedSanitizeSchema } from "../lib/sanitize.js";
 import { timeAgo, authUrl } from "../lib/formatters.js";
@@ -16,7 +18,7 @@ const DISMISS_DELAY_MS = 300;      // wait for swipe-out animation before callin
 const RESET_TRANSITION_MS = 200;   // wait before clearing CSS transition after snap-back
 const SWIPE_HINT_MS = 1300;        // how long the swipe-hint animation plays on first load
 
-function StackedRow({ sub, onSelect, onDismiss, unread }) {
+function StackedRow({ sub, onSelect, onDismiss, unread, threadCount }) {
   const rowRef = useRef(null);
   const startX = useRef(0);
   const dx = useRef(0);
@@ -75,6 +77,12 @@ function StackedRow({ sub, onSelect, onDismiss, unread }) {
           {sub.attachments.length}
         </span>
       )}
+      {threadCount > 0 && (
+        <span className="feed-stacked-attachments">
+          <MessageCircle size={11} />
+          {threadCount}
+        </span>
+      )}
       <span className="feed-stacked-time">{timeAgo(sub.timestamp)}</span>
       {onDismiss && (
         <button
@@ -89,7 +97,7 @@ function StackedRow({ sub, onSelect, onDismiss, unread }) {
   );
 }
 
-export default function FeedItem({ item, stackedItems, unreadThread, unreadThreads, onSelect, onDismiss, showSwipeHint }) {
+export default function FeedItem({ item, stackedItems, unreadThread, unreadThreads, threadCount, threadCounts, onSelect, onDismiss, showSwipeHint }) {
   const [expanded, setExpanded] = useState(false);
   const cardRef = useRef(null);
   const swipeStart = useRef(0);
@@ -167,7 +175,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
     return (
       <article className="feed-item feed-item-stacked" tabIndex={0}>
         {shown.map((sub) => (
-          <StackedRow key={sub.id} sub={sub} onSelect={onSelect} onDismiss={onDismiss} unread={unreadThreads?.has(sub.id)} />
+          <StackedRow key={sub.id} sub={sub} onSelect={onSelect} onDismiss={onDismiss} unread={unreadThreads?.has(sub.id)} threadCount={threadCounts?.get(sub.id)} />
         ))}
         {remaining > 0 && !expanded && (
           <div
@@ -240,7 +248,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
       )}
       <h3 className="feed-item-title">{item.title}</h3>
       <div className="feed-item-body" onClick={(e) => { if (e.target.tagName === "A") e.stopPropagation(); }}>
-        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
+        <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
       </div>
       {cardImage && layout === "standard" && (
         <div className="feed-item-images">
@@ -259,6 +267,12 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
           <span className="feed-item-attachments">
             <Paperclip size={12} />
             {attachments.length}
+          </span>
+        )}
+        {threadCount > 0 && (
+          <span className="feed-item-thread-count">
+            <MessageCircle size={12} />
+            {threadCount}
           </span>
         )}
         <span className="feed-item-time">{timeAgo(item.timestamp)}</span>

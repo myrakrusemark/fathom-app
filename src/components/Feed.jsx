@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { MessageCircle, ChevronDown, Image } from "lucide-react";
-import { getFeed, listRooms, dismissFeedItem, fireRoutine } from "../api/client.js";
+import { getFeed, listRooms, dismissFeedItem, restoreFeedItem, fireRoutine } from "../api/client.js";
+import { notify } from "../lib/notify.js";
 import { getHumanUser } from "../lib/connection.js";
 import FeedItem from "./FeedItem.jsx";
 import FeedDetailPanel from "./FeedDetailPanel.jsx";
@@ -50,11 +51,13 @@ export default function Feed({
   const [loading, setLoading] = useState(true);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [unreadThreads, setUnreadThreads] = useState(new Set());
+  const [threadCounts, setThreadCounts] = useState(new Map()); // itemId → message_count
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const localDismissedRef = useRef(new Set());
+  const knownItemIdsRef = useRef(null); // null = first load (skip notification)
   const pageRef = useRef(null);
   const pullDistanceRef = useRef(0);
   const pullStartYRef = useRef(0);
@@ -114,6 +117,24 @@ export default function Feed({
             ? { ...item, dismissed: true }
             : item
         );
+        // Notify for new undismissed items (skip first load)
+        if (knownItemIdsRef.current !== null) {
+          const fresh = items.filter(
+            (item) => !item.dismissed && !knownItemIdsRef.current.has(item.id)
+          );
+          if (fresh.length === 1) {
+            notify(fresh[0].title || fresh[0].workspace || "New update", {
+              body: fresh[0].body?.replace(/<[^>]*>/g, "").slice(0, 120) || "",
+              tag: "feed-" + fresh[0].id,
+            });
+          } else if (fresh.length > 1) {
+            notify("Fathom", {
+              body: `${fresh.length} new updates`,
+              tag: "feed-batch",
+            });
+          }
+        }
+        knownItemIdsRef.current = new Set(items.map((i) => i.id));
         setAllItems(items);
         setInitialLoadDone(true);
       })
@@ -131,22 +152,53 @@ export default function Feed({
   // Poll room list for unread thread indicators — 5s for near-realtime
   useEffect(() => {
     let cancelled = false;
+    const humanUser = getHumanUser();
     function fetchRooms() {
-      listRooms(getHumanUser())
+      listRooms(humanUser)
         .then((data) => {
           if (cancelled) return;
           const unread = new Set();
+          const counts = new Map();
+          const restoreIds = [];
           for (const room of data.rooms || []) {
-            if (room.name.startsWith("notif-") && room.unread_count > 0) {
-              // notif-{workspace}-{itemId} — extract itemId (everything after second dash)
-              const parts = room.name.split("-");
-              if (parts.length >= 3) {
-                const itemId = parts.slice(2).join("-");
-                unread.add(itemId);
-              }
+            if (!room.name.startsWith("notif-")) continue;
+            // notif-{workspace}-{itemId} — extract itemId (everything after second dash)
+            const parts = room.name.split("-");
+            if (parts.length < 3) continue;
+            const itemId = parts.slice(2).join("-");
+            // Track thread message counts for all notif rooms
+            if (room.message_count > 0) {
+              counts.set(itemId, room.message_count);
+            }
+            // Only mark unread when workspace responded (not when user sent)
+            if (room.unread_count > 0 && room.last_sender !== humanUser) {
+              unread.add(itemId);
+              restoreIds.push(itemId);
             }
           }
           setUnreadThreads(unread);
+          setThreadCounts(counts);
+          // Auto-restore dismissed items when workspace adds to the thread
+          if (restoreIds.length > 0) {
+            setAllItems((prev) => {
+              let changed = false;
+              const updated = prev.map((item) => {
+                if (item.dismissed && restoreIds.includes(item.id)) {
+                  changed = true;
+                  localDismissedRef.current.delete(item.id);
+                  return { ...item, dismissed: false };
+                }
+                return item;
+              });
+              if (changed) {
+                // Persist restore to server
+                for (const id of restoreIds) {
+                  restoreFeedItem(id).catch(() => {});
+                }
+              }
+              return changed ? updated : prev;
+            });
+          }
         })
         .catch(() => {});
     }
@@ -205,7 +257,7 @@ export default function Feed({
     return (
       <div className="page">
         <header className="page-header">
-          <h1>fathom</h1>
+          <h1><span className="c-teal">fa</span><span className="c-purple">th</span><span className="c-orange">o</span><span className="c-green">m</span></h1>
         </header>
         <div className="feed">
           {[1, 2, 3].map((i) => (
@@ -224,14 +276,13 @@ export default function Feed({
   return (
     <div className="page" ref={pageRef}>
       <header className="page-header">
-        <h1>fathom</h1>
+        <h1><span className="c-teal">fa</span><span className="c-purple">th</span><span className="c-orange">o</span><span className="c-green">m</span></h1>
         <span className="header-subtitle">updates</span>
         {wallpaper?.reason && (
           <button className="tour-replay-btn" onClick={() => setWallpaperOpen(true)} aria-label="Wallpaper info">
             <Image size={16} />
           </button>
         )}
-
       </header>
 
       <>
@@ -249,12 +300,11 @@ export default function Feed({
           )}
 
           <div className="feed">
-            {initialLoadDone && newItems.length === 0 && <FeedEmpty />}
             {stackedNewItems.map((entry, index) =>
               entry.stacked ? (
-                <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} unreadThreads={unreadThreads}onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />
+                <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} unreadThreads={unreadThreads} threadCounts={threadCounts} onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />
               ) : (
-                <FeedItem key={entry.item.id} item={entry.item} unreadThread={unreadThreads.has(entry.item.id)}onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} showSwipeHint={index === 0} />
+                <FeedItem key={entry.item.id} item={entry.item} unreadThread={unreadThreads.has(entry.item.id)} threadCount={threadCounts.get(entry.item.id)} onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} showSwipeHint={index === 0} />
               )
             )}
           </div>
@@ -273,6 +323,8 @@ export default function Feed({
               onClose={() => setWallpaperOpen(false)}
             />
           )}
+
+          {initialLoadDone && <FeedEmpty hasNotifications={newItems.length > 0} />}
 
           {earlierItems.length > 0 && (
             <div className="feed-earlier">

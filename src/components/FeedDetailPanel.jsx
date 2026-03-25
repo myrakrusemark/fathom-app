@@ -2,7 +2,9 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { Play, Pause, Check, X, Send, Download, ThumbsUp, ThumbsDown } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
+import rehypeKatex from "rehype-katex";
 import rehypeSanitize from "rehype-sanitize";
 import { feedSanitizeSchema } from "../lib/sanitize.js";
 import PhotoSwipeLightbox from "photoswipe/lightbox";
@@ -31,6 +33,63 @@ function FeedAudioItem({ att }) {
         <Play size={14} fill="currentColor" className="feed-item-audio-icon" />
       )}
       <span className="feed-item-audio-label">{att.label}</span>
+    </div>
+  );
+}
+
+/** Try to parse text as notification JSON. Returns parsed object or null. */
+function tryParseNotificationJson(text) {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return null;
+  try {
+    const obj = JSON.parse(trimmed);
+    if (obj.title || obj.body || obj.attachments) return obj;
+  } catch { /* not JSON */ }
+  return null;
+}
+
+function ThreadNotification({ notif, timestamp }) {
+  const attachments = notif.attachments || [];
+  const images = attachments.filter((a) => a.type === "image");
+  const audioFiles = attachments.filter((a) => a.type === "audio");
+  const files = attachments.filter((a) => a.type !== "image" && a.type !== "audio");
+
+  return (
+    <div className="thread-notification">
+      {notif.title && <h4 className="thread-notification-title">{notif.title}</h4>}
+      {notif.body && (
+        <div className="thread-notification-body">
+          <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, feedSanitizeSchema]]}>{notif.body}</Markdown>
+        </div>
+      )}
+      {images.length > 0 && (
+        <div className="feed-item-images">
+          {images.map((att, i) => (
+            <img key={att.url || i} className="feed-item-image" src={authUrl(att.url)} alt={att.label} loading="lazy" />
+          ))}
+        </div>
+      )}
+      {audioFiles.length > 0 && (
+        <div className="feed-item-audio-list">
+          {audioFiles.map((att, i) => (
+            <FeedAudioItem key={att.url || i} att={att} />
+          ))}
+        </div>
+      )}
+      {files.length > 0 && (
+        <div className="feed-item-files">
+          {files.map((att, i) => (
+            <a key={att.url || i} className="feed-item-file-chip" href={authUrl(att.url)} target="_blank" rel="noopener noreferrer">
+              <span className="file-chip-label">{att.label || att.caption}</span>
+              {att.size != null && <span className="file-chip-size">{formatSize(att.size)}</span>}
+              <span className="file-chip-download"><Download size={14} /></span>
+            </a>
+          ))}
+        </div>
+      )}
+      <div className="chat-meta">
+        <span className="chat-time">{timeAgo(timestamp)}</span>
+      </div>
     </div>
   );
 }
@@ -186,7 +245,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
           )}
 
           <div className="feed-panel-body">
-            <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
           </div>
 
           {images.length > 0 && (
@@ -259,19 +318,27 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
           {chatMessages.length > 0 && (
             <div className="feed-panel-chat">
               <div className="feed-panel-chat-label">Thread</div>
-              {chatMessages.map((msg) => (
-                <ChatMessage
-                  key={msg.id}
-                  msg={{
-                    id: msg.id,
-                    role: msg.sender === getHumanUser() ? "user" : "agent",
-                    type: "text",
-                    text: stripChatDecorations(msg.text),
-                    timestamp: msg.timestamp,
-                    memories: 0,
-                  }}
-                />
-              ))}
+              {chatMessages.map((msg) => {
+                const humanUser = getHumanUser();
+                const isAgent = msg.sender !== humanUser;
+                const notif = isAgent ? tryParseNotificationJson(msg.text) : null;
+                if (notif) {
+                  return <ThreadNotification key={msg.id} notif={notif} timestamp={msg.timestamp} />;
+                }
+                return (
+                  <ChatMessage
+                    key={msg.id}
+                    msg={{
+                      id: msg.id,
+                      role: isAgent ? "agent" : "user",
+                      type: "text",
+                      text: stripChatDecorations(msg.text),
+                      timestamp: msg.timestamp,
+                      memories: 0,
+                    }}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

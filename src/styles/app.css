@@ -3570,6 +3570,23 @@ body {
   opacity: 0.6;
 }
 
+.feed-item-thread-count {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* When no attachments precede thread count, push it right */
+.feed-item-workspace + .feed-item-thread-count {
+  margin-left: auto;
+}
+
+.feed-item-thread-count svg {
+  opacity: 0.6;
+}
+
 .feed-item-unread-dot {
   width: 6px;
   height: 6px;
@@ -3746,6 +3763,11 @@ body {
     display: block;
   }
 
+  /* FeedEmpty: span full grid width so it centers */
+  .feed-empty {
+    grid-column: 1 / -1;
+  }
+
   /* Compact: tight, minimal */
   .feed-item.layout-compact {
     padding: 10px 12px;
@@ -3827,6 +3849,43 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 10px;
+}
+
+.thread-notification {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 15%, transparent);
+}
+
+.thread-notification-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.thread-notification-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.thread-notification-body p {
+  margin: 0 0 6px;
+}
+
+.thread-notification-body p:last-child {
+  margin-bottom: 0;
+}
+
+.thread-notification .feed-item-files,
+.thread-notification .feed-item-audio-list,
+.thread-notification .feed-item-images {
+  margin-top: 8px;
+}
+
+.thread-notification .chat-meta {
+  margin-top: 8px;
 }
 
 .feed-panel-chat-msg {
