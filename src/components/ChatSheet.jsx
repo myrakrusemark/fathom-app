@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, Paperclip, Send } from "lucide-react";
 import { getWsUrl, getWorkspace, sendMessage, uploadAttachment, sendDm, pollDmRoom } from "../api/client.js";
+import { notify } from "../lib/notify.js";
 import { getHumanUser } from "../lib/connection.js";
 import ChatMessage, { ToolGroup } from "./ChatMessage.jsx";
 import { formatSize } from "../lib/formatters.js";
@@ -282,6 +283,9 @@ function eventToMessages(event, currentWorkspace) {
     if (sub === "compaction") {
       return [{ id: `ws-${seq}`, role: "system", type: "presence", timestamp: ts, label: "context compacted" }];
     }
+    if (sub === "image_scrub") {
+      return [{ id: `ws-${seq}`, role: "system", type: "presence", timestamp: ts, label: "bad image removed, restarting" }];
+    }
     return [];
   }
 
@@ -535,7 +539,14 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
           // Track unread agent messages when chat is closed
           if (!openRef.current && onUnread) {
             const agentTexts = newMsgs.filter((m) => m.role === "agent" && m.type === "text");
-            if (agentTexts.length > 0) onUnread(agentTexts.length);
+            if (agentTexts.length > 0) {
+              onUnread(agentTexts.length);
+              const last = agentTexts[agentTexts.length - 1];
+              notify("Fathom", {
+                body: last.text?.slice(0, 120) || "New message",
+                tag: "chat-" + activeWorkspace,
+              });
+            }
           }
           if (newMsgs.length > 0) {
             setMessages((prev) => {

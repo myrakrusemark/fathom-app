@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { Send, PlusCircle as PlusCircleIcon, Clock, Newspaper, TrendingUp, ShoppingBag, FileText, Sun } from "lucide-react";
-import { readRoom, postToRoom } from "../api/client.js";
+import { useState, useEffect, useCallback } from "react";
+import { Send, PlusCircle as PlusCircleIcon, Clock, Newspaper, TrendingUp, ShoppingBag, FileText, Sun, RefreshCw } from "lucide-react";
+import { readRoom, postToRoom, fireRoutine } from "../api/client.js";
 import { getHumanUser, getHumanDisplayName } from "../lib/connection.js";
 
 const ICON_MAP = {
@@ -28,14 +28,15 @@ function ScoutIcon() {
   return <Clock size={28} color="var(--accent)" strokeWidth={1.5} />;
 }
 
-export default function FeedEmpty() {
+export default function FeedEmpty({ hasNotifications = false }) {
   const [suggestions, setSuggestions] = useState([]);
   const [customText, setCustomText] = useState("");
   const [phase, setPhase] = useState("browse"); // "browse" | "sending" | "confirmed"
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
+  const fetchSuggestions = useCallback(() => {
     // Read latest suggestions from #suggestions room (7 day window)
-    readRoom("suggestions", 10080)
+    return readRoom("suggestions", 10080)
       .then((data) => {
         const messages = data.messages || [];
         for (let i = messages.length - 1; i >= 0; i--) {
@@ -51,6 +52,20 @@ export default function FeedEmpty() {
       })
       .catch(() => setSuggestions(DEFAULT_SUGGESTIONS));
   }, []);
+
+  useEffect(() => { fetchSuggestions(); }, [fetchSuggestions]);
+
+  function handleRefresh() {
+    setIsRefreshing(true);
+    fireRoutine("56da7f53")
+      .catch(() => {}) // fire-and-forget
+      .finally(() => {
+        // Poll for new suggestions — Scout needs a moment to run
+        setTimeout(() => {
+          fetchSuggestions().finally(() => setIsRefreshing(false));
+        }, 4000);
+      });
+  }
 
   function sendToScout(message) {
     setPhase("sending");
@@ -108,16 +123,28 @@ export default function FeedEmpty() {
   // Browse state — show suggestions
   return (
     <div className="feed-empty">
-      <div className="feed-empty-icon">
-        <PlusCircle />
-      </div>
-      <h2 className="feed-empty-title">All caught up</h2>
-      <p className="feed-empty-subtitle">
-        I found some things worth starting
-      </p>
+      {!hasNotifications && (
+        <>
+          <div className="feed-empty-icon">
+            <PlusCircle />
+          </div>
+          <h2 className="feed-empty-title">All caught up</h2>
+          <p className="feed-empty-subtitle">
+            I found some things worth starting
+          </p>
+        </>
+      )}
 
       {suggestions.length > 0 && (
         <div className="feed-empty-suggestions">
+          <button
+            className={`feed-empty-refresh${isRefreshing ? " spinning" : ""}`}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title="Ask Scout for fresh suggestions"
+          >
+            <RefreshCw size={14} />
+          </button>
           {suggestions.map((s) => (
             <button
               key={s.title}

@@ -272,7 +272,7 @@ export default function Routines({ embedded = false }) {
     return (
       <div className="page">
         <header className="page-header">
-          <h1>fathom</h1>
+          <h1><span className="c-teal">fa</span><span className="c-purple">th</span><span className="c-orange">o</span><span className="c-green">m</span></h1>
           <span className="header-subtitle">routines</span>
         </header>
         <div className="loading">loading...</div>
@@ -416,7 +416,7 @@ export default function Routines({ embedded = false }) {
   return (
     <div className="page">
       <header className="page-header">
-        <h1>fathom</h1>
+        <h1><span className="c-teal">fa</span><span className="c-purple">th</span><span className="c-orange">o</span><span className="c-green">m</span></h1>
         <span className="header-subtitle">routines</span>
       </header>
       {routinesList}

@@ -58,6 +58,8 @@ export default function Feed({
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const localDismissedRef = useRef(new Set());
   const knownItemIdsRef = useRef(null); // null = first load (skip notification)
+  const prevThreadCountsRef = useRef(new Map()); // tracks last-seen message_count per thread
+  const initialRoomPollRef = useRef(true); // skip restore on very first poll
   const pageRef = useRef(null);
   const pullDistanceRef = useRef(0);
   const pullStartYRef = useRef(0);
@@ -170,14 +172,21 @@ export default function Feed({
             if (room.message_count > 0) {
               counts.set(itemId, room.message_count);
             }
-            // Only mark unread when workspace responded (not when user sent)
+            // Mark unread for dot indicator when workspace responded (not when user sent)
             if (room.unread_count > 0 && room.last_sender !== humanUser) {
               unread.add(itemId);
-              restoreIds.push(itemId);
+              // Only restore dismissed items when the thread has *new* activity since
+              // last poll — not just because it has old unread messages
+              const prevCount = prevThreadCountsRef.current.get(itemId) || 0;
+              if (!initialRoomPollRef.current && room.message_count > prevCount) {
+                restoreIds.push(itemId);
+              }
             }
           }
           setUnreadThreads(unread);
           setThreadCounts(counts);
+          prevThreadCountsRef.current = counts;
+          initialRoomPollRef.current = false;
           // Auto-restore dismissed items when workspace adds to the thread
           if (restoreIds.length > 0) {
             setAllItems((prev) => {

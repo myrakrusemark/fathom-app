@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState } from "react";
 import { Play, Pause, Mic, Wrench, Clock, ChevronDown, Check, Image } from "lucide-react";
+import katex from "katex";
 import { getConnection } from "../lib/connection.js";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ThoughtBubble from "./ThoughtBubble.jsx";
@@ -8,36 +9,55 @@ import { timeAgo, authUrl, formatSize } from "../lib/formatters.js";
 
 export function renderMarkdown(text) {
   if (!text) return null;
-  const parts = text.split("\n\n");
-  return parts.map((block, i) => {
-    const trimmed = block.trim();
-    if (/^\d+\.\s/.test(trimmed)) {
-      const items = trimmed.split(/\n/).filter(Boolean);
-      return (
-        <ol key={i} className="chat-md-ol">
-          {items.map((item, j) => (
-            <li key={j}>{inlineMarkdown(item.replace(/^\d+\.\s*/, ""))}</li>
-          ))}
-        </ol>
-      );
+  // Split on display math blocks ($$...$$) first, then paragraph breaks
+  const displayMathParts = text.split(/((?:^|\n)\$\$[\s\S]*?\$\$(?:\n|$))/);
+  const elements = [];
+  let key = 0;
+  for (const segment of displayMathParts) {
+    const displayMatch = segment.match(/^\n?\$\$([\s\S]*?)\$\$\n?$/);
+    if (displayMatch) {
+      try {
+        const html = katex.renderToString(displayMatch[1].trim(), { displayMode: true, throwOnError: false });
+        elements.push(<div key={key++} className="chat-md-math-display" dangerouslySetInnerHTML={{ __html: html }} />);
+      } catch {
+        elements.push(<div key={key++} className="chat-md-math-display">{segment}</div>);
+      }
+      continue;
     }
-    if (/^[-*]\s/.test(trimmed)) {
-      const items = trimmed.split(/\n/).filter(Boolean);
-      return (
-        <ul key={i} className="chat-md-ul">
-          {items.map((item, j) => (
-            <li key={j}>{inlineMarkdown(item.replace(/^[-*]\s*/, ""))}</li>
-          ))}
-        </ul>
-      );
+    const parts = segment.split("\n\n");
+    for (const block of parts) {
+      const trimmed = block.trim();
+      if (!trimmed) continue;
+      if (/^\d+\.\s/.test(trimmed)) {
+        const items = trimmed.split(/\n/).filter(Boolean);
+        elements.push(
+          <ol key={key++} className="chat-md-ol">
+            {items.map((item, j) => (
+              <li key={j}>{inlineMarkdown(item.replace(/^\d+\.\s*/, ""))}</li>
+            ))}
+          </ol>
+        );
+      } else if (/^[-*]\s/.test(trimmed)) {
+        const items = trimmed.split(/\n/).filter(Boolean);
+        elements.push(
+          <ul key={key++} className="chat-md-ul">
+            {items.map((item, j) => (
+              <li key={j}>{inlineMarkdown(item.replace(/^[-*]\s*/, ""))}</li>
+            ))}
+          </ul>
+        );
+      } else {
+        elements.push(<p key={key++}>{inlineMarkdown(trimmed)}</p>);
+      }
     }
-    return <p key={i}>{inlineMarkdown(trimmed)}</p>;
-  });
+  }
+  return elements;
 }
 
 function inlineMarkdown(text) {
   const tokens = [];
-  const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
+  // Added \$(.+?)\$ for inline math — matched before other patterns
+  const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\)|\$(.+?)\$)/g;
   let lastIndex = 0;
   let match;
   while ((match = re.exec(text)) !== null) {
@@ -67,6 +87,13 @@ function inlineMarkdown(text) {
           {match[5]}
         </a>,
       );
+    } else if (match[7]) {
+      try {
+        const html = katex.renderToString(match[7], { throwOnError: false });
+        tokens.push(<span key={match.index} className="chat-md-math" dangerouslySetInnerHTML={{ __html: html }} />);
+      } catch {
+        tokens.push(<code key={match.index} className="chat-md-code">{match[7]}</code>);
+      }
     }
     lastIndex = match.index + match[0].length;
   }

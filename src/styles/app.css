@@ -4538,6 +4538,34 @@ body {
   width: 100%;
   max-width: 360px;
   margin-bottom: 16px;
+  position: relative;
+}
+.feed-empty-refresh {
+  position: absolute;
+  top: -28px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
+  padding: 0;
+}
+.feed-empty-refresh:hover {
+  opacity: 1;
+  color: var(--accent);
+}
+.feed-empty-refresh:disabled {
+  cursor: default;
+}
+.feed-empty-refresh.spinning svg {
+  animation: spin 1s linear infinite;
 }
 .feed-empty-card {
   display: flex;

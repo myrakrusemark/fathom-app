@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { isConnected, detectSameOrigin, saveConnection, getConnection } from "./lib/connection.js";
 import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm, getThemes, readRoom } from "./api/client.js";
 import { applyTheme } from "./lib/theme.js";
+import { requestNotificationPermission } from "./lib/notify.js";
 import Feed from "./components/Feed.jsx";
 import Routines from "./components/Routines.jsx";
 import Backstage from "./components/Backstage.jsx";
@@ -50,6 +51,11 @@ export default function App() {
     const id = setInterval(poll, 15000);
     return () => clearInterval(id);
   }, [connected, setupPhase, chatOpen, chatWorkspace]);
+
+  // Request browser notification permission once connected
+  useEffect(() => {
+    if (connected && setupPhase === "done") requestNotificationPermission();
+  }, [connected, setupPhase]);
 
   // On mount: try same-origin auto-connect, then check onboarding status
   useEffect(() => {

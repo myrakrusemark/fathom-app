@@ -2,7 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
+import rehypeKatex from "rehype-katex";
 import rehypeSanitize from "rehype-sanitize";
 import { feedSanitizeSchema } from "../lib/sanitize.js";
 import {
@@ -114,8 +116,8 @@ function FilePanel({ file, workspace, onClose }) {
           {!loading && content && (
             <div className="vault-detail-content">
               <Markdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeRaw, [rehypeSanitize, feedSanitizeSchema]]}
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, feedSanitizeSchema]]}
                 components={markdownComponents}
               >
                 {content.body || content.content || ""}
