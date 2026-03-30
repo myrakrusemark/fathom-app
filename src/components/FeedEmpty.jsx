@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Send, PlusCircle as PlusCircleIcon, Clock, Newspaper, TrendingUp, ShoppingBag, FileText, Sun, RefreshCw } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Send, Clock, Newspaper, TrendingUp, ShoppingBag, FileText, Sun, RefreshCw, ThumbsUp, ThumbsDown, MessageCircle } from "lucide-react";
 import { readRoom, postToRoom, fireRoutine } from "../api/client.js";
 import { getHumanUser, getHumanDisplayName } from "../lib/connection.js";
 
@@ -16,10 +16,6 @@ const DEFAULT_SUGGESTIONS = [
   { emoji: "☀️", title: "Set up weather alerts" },
 ];
 
-function PlusCircle() {
-  return <PlusCircleIcon size={48} color="var(--accent)" strokeWidth={1.5} />;
-}
-
 function SendIcon() {
   return <Send size={18} />;
 }
@@ -28,11 +24,12 @@ function ScoutIcon() {
   return <Clock size={28} color="var(--accent)" strokeWidth={1.5} />;
 }
 
-export default function FeedEmpty({ hasNotifications = false }) {
+export default function FeedEmpty() {
   const [suggestions, setSuggestions] = useState([]);
   const [customText, setCustomText] = useState("");
   const [phase, setPhase] = useState("browse"); // "browse" | "sending" | "confirmed"
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const inputRef = useRef(null);
 
   const fetchSuggestions = useCallback(() => {
     // Read latest suggestions from #suggestions room (7 day window)
@@ -84,6 +81,19 @@ export default function FeedEmpty({ hasNotifications = false }) {
     );
   }
 
+  function handleReject(suggestion) {
+    sendToScout(
+      `[APP REJECT] ${getHumanDisplayName()} rejected: "${suggestion.title}". ` +
+      `DO NOT reply to this DM — she won't see it. ` +
+      `Note this preference for future suggestions.`
+    );
+  }
+
+  function handleChat(suggestion) {
+    setCustomText(suggestion.title);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }
+
   function handleCustom(e) {
     e.preventDefault();
     if (!customText.trim()) return;
@@ -112,9 +122,6 @@ export default function FeedEmpty({ hasNotifications = false }) {
   if (phase === "sending") {
     return (
       <div className="feed-empty feed-empty-sending">
-        <div className="feed-empty-icon">
-          <PlusCircle />
-        </div>
         <p className="feed-empty-subtitle">Sending to Scout...</p>
       </div>
     );
@@ -123,43 +130,42 @@ export default function FeedEmpty({ hasNotifications = false }) {
   // Browse state — show suggestions
   return (
     <div className="feed-empty">
-      {!hasNotifications && (
-        <>
-          <div className="feed-empty-icon">
-            <PlusCircle />
-          </div>
-          <h2 className="feed-empty-title">All caught up</h2>
-          <p className="feed-empty-subtitle">
-            I found some things worth starting
-          </p>
-        </>
-      )}
-
       {suggestions.length > 0 && (
         <div className="feed-empty-suggestions">
-          <button
-            className={`feed-empty-refresh${isRefreshing ? " spinning" : ""}`}
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            title="Ask Scout for fresh suggestions"
-          >
-            <RefreshCw size={14} />
-          </button>
-          {suggestions.map((s) => (
+          <div className="feed-suggestions-header">
+            <span className="feed-suggestions-title">Scout&apos;s Suggestions</span>
             <button
-              key={s.title}
-              className="feed-empty-card"
-              onClick={() => handlePick(s)}
+              className={`feed-empty-refresh${isRefreshing ? " spinning" : ""}`}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Ask Scout for fresh suggestions"
             >
+              <RefreshCw size={14} />
+            </button>
+          </div>
+          {suggestions.map((s) => (
+            <div key={s.title} className="feed-empty-card">
               {s.emoji && <span className="feed-empty-card-emoji">{ICON_MAP[s.emoji] ? (() => { const Icon = ICON_MAP[s.emoji]; return <Icon size={18} />; })() : s.emoji}</span>}
               <span className="feed-empty-card-text">{s.title}</span>
-            </button>
+              <span className="feed-empty-card-actions">
+                <button className="feed-empty-action" onClick={() => handlePick(s)} aria-label="Accept" title="Yes, do this">
+                  <ThumbsUp size={13} />
+                </button>
+                <button className="feed-empty-action" onClick={() => handleReject(s)} aria-label="Reject" title="Not this one">
+                  <ThumbsDown size={13} />
+                </button>
+                <button className="feed-empty-action" onClick={() => handleChat(s)} aria-label="Discuss" title="Let me add context">
+                  <MessageCircle size={13} />
+                </button>
+              </span>
+            </div>
           ))}
         </div>
       )}
 
       <form className="feed-empty-input" onSubmit={handleCustom}>
         <input
+          ref={inputRef}
           type="text"
           placeholder="Or tell me what you need..."
           value={customText}

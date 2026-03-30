@@ -346,7 +346,7 @@ export default function Feed({
             />
           )}
 
-          {initialLoadDone && <FeedEmpty hasNotifications={filteredItems.length > 0} />}
+          {initialLoadDone && <FeedEmpty />}
         </>
     </div>
   );
