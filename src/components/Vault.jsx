@@ -117,7 +117,7 @@ function FilePanel({ file, workspace, onClose }) {
             <div className="vault-detail-content">
               <Markdown
                 remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, feedSanitizeSchema]]}
+                rehypePlugins={[rehypeRaw, [rehypeKatex, { strict: false }], [rehypeSanitize, feedSanitizeSchema]]}
                 components={markdownComponents}
               >
                 {content.body || content.content || ""}

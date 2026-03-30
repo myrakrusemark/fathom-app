@@ -240,7 +240,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
       )}
       <h3 className="feed-item-title">{item.title}</h3>
       <div className="feed-item-body" onClick={(e) => { if (e.target.tagName === "A") e.stopPropagation(); }}>
-        <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
+        <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, [rehypeKatex, { strict: false }], [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
       </div>
       {cardImage && layout === "standard" && (
         <div className="feed-item-images">
@@ -258,7 +258,7 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
   );
 }
 
-function FeedItemFooter({ item, attachments, threadCount, onDismiss }) {
+export function FeedItemFooter({ item, attachments, threadCount, onDismiss }) {
   const storageKey = `reaction:${item.id}`;
   const [reaction, setReaction] = useState(() => localStorage.getItem(storageKey));
 

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from "react";
-import { Play, Pause, Check, X, Send, Download, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Play, Pause, X, Send, Download } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -9,7 +9,8 @@ import rehypeSanitize from "rehype-sanitize";
 import { feedSanitizeSchema } from "../lib/sanitize.js";
 import PhotoSwipeLightbox from "photoswipe/lightbox";
 import "photoswipe/style.css";
-import { sendReaction, postToRoom, readRoom, updateFeedStatus } from "../api/client.js";
+import { postToRoom, readRoom, updateFeedStatus } from "../api/client.js";
+import { FeedItemFooter } from "./FeedItem.jsx";
 import { getHumanUser } from "../lib/connection.js";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ChatMessage from "./ChatMessage.jsx";
@@ -59,7 +60,7 @@ function ThreadNotification({ notif, timestamp }) {
       {notif.title && <h4 className="thread-notification-title">{notif.title}</h4>}
       {notif.body && (
         <div className="thread-notification-body">
-          <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, feedSanitizeSchema]]}>{notif.body}</Markdown>
+          <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, [rehypeKatex, { strict: false }], [rehypeSanitize, feedSanitizeSchema]]}>{notif.body}</Markdown>
         </div>
       )}
       {images.length > 0 && (
@@ -96,10 +97,6 @@ function ThreadNotification({ notif, timestamp }) {
 
 export default function FeedDetailPanel({ item, onClose, onDismiss }) {
   const [visible, setVisible] = useState(false);
-  const storageKey = `reaction:${item.id}`;
-  const stored = localStorage.getItem(storageKey);
-  const [reaction, setReaction] = useState(stored);
-  const [sent, setSent] = useState(!!stored);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
@@ -168,16 +165,6 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
       .finally(() => setSending(false));
   }
 
-  function handleReaction(type, e) {
-    e.stopPropagation();
-    if (sent) return;
-    setReaction(type);
-    setSent(true);
-    localStorage.setItem(storageKey, type);
-    sendReaction(item.workspace, type, item).catch(console.error);
-    updateFeedStatus(item.id, "engaged").catch(console.error);
-  }
-
   const attachments = item.attachments || [];
   const images = attachments.filter((a) => a.type === "image" && !a.placeholder);
   const audioFiles = attachments.filter((a) => a.type === "audio");
@@ -223,15 +210,6 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
       <div className={`feed-panel ${visible ? "visible" : ""}`} onClick={(e) => e.stopPropagation()}>
         <div className="feed-panel-scroll">
           <div className="feed-panel-header">
-            <span className="feed-item-dot" style={{ backgroundColor: item.workspace_color }} />
-            <span className="feed-item-workspace">{item.workspace_name}</span>
-            <span className="feed-item-time">{timeAgo(item.timestamp)}</span>
-            {onDismiss && (
-              <button className="feed-panel-dismiss" onClick={(e) => { e.stopPropagation(); onDismiss(); handleClose(); }} aria-label="Dismiss">
-                <Check size={14} strokeWidth={2.5} />
-                <span>Dismiss</span>
-              </button>
-            )}
             <button className="feed-panel-dismiss" onClick={handleClose} aria-label="Close">
               <X size={14} />
               <span>Close</span>
@@ -247,7 +225,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
           )}
 
           <div className="feed-panel-body">
-            <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, [rehypeKatex, { strict: false }], [rehypeSanitize, feedSanitizeSchema]]}>{item.body}</Markdown>
           </div>
 
           {images.length > 0 && (
@@ -300,23 +278,6 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
             </div>
           )}
 
-          <div className="feed-panel-actions">
-            {sent ? (
-              <span className="action-confirmed">
-                {reaction === "up" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"} Thanks for your feedback!
-              </span>
-            ) : (
-              <>
-                <button className="action-btn" onClick={(e) => handleReaction("up", e)}>
-                  <ThumbsUp size={16} />
-                </button>
-                <button className="action-btn" onClick={(e) => handleReaction("down", e)}>
-                  <ThumbsDown size={16} />
-                </button>
-              </>
-            )}
-          </div>
-
           {chatMessages.length > 0 && (
             <div className="feed-panel-chat">
               <div className="feed-panel-chat-label">Thread</div>
@@ -346,6 +307,12 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
         </div>
 
         <div className="feed-panel-bottom">
+          <FeedItemFooter
+            item={item}
+            attachments={attachments}
+            threadCount={0}
+            onDismiss={onDismiss ? () => { onDismiss(); handleClose(); } : null}
+          />
           <form className="feed-panel-input" onSubmit={handleSend}>
             <input
               ref={inputRef}

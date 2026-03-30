@@ -7,6 +7,7 @@ import FeedItem from "./FeedItem.jsx";
 import FeedDetailPanel from "./FeedDetailPanel.jsx";
 import FeedEmpty from "./FeedEmpty.jsx";
 import WallpaperPanel from "./WallpaperPanel.jsx";
+import TabBar from "./TabBar.jsx";
 
 function stackByWorkspace(items) {
   const result = [];
@@ -96,13 +97,8 @@ export default function Feed({
     }
   }, [allItems, filter]);
 
-  // Counts for filter tabs
-  const filterCounts = useMemo(() => ({
-    new: allItems.filter((i) => (i.status || "new") === "new").length,
-    current: allItems.filter((i) => (i.status || "new") !== "resolved").length,
-    done: allItems.filter((i) => (i.status || "new") === "resolved").length,
-    all: allItems.length,
-  }), [allItems]);
+  const currentCount = useMemo(() => allItems.filter((i) => (i.status || "new") !== "resolved").length, [allItems]);
+  const newCount = useMemo(() => allItems.filter((i) => (i.status || "new") === "new").length, [allItems]);
 
   // Resolve selected item from ID
   const selectedItem = useMemo(
@@ -313,25 +309,17 @@ export default function Feed({
             </div>
           )}
 
-          <div className="feed-filter-bar">
-            {[
-              { key: "current", label: "Current" },
-              { key: "new", label: "New" },
-              { key: "done", label: "Done" },
-              { key: "all", label: "All" },
-            ].map((f) => (
-              <button
-                key={f.key}
-                className={`feed-filter-tab${filter === f.key ? " active" : ""}`}
-                onClick={() => setFilter(f.key)}
-              >
-                {f.label}
-                {filterCounts[f.key] > 0 && (
-                  <span className="feed-filter-count">{filterCounts[f.key]}</span>
-                )}
-              </button>
-            ))}
-          </div>
+          <TabBar
+            tabs={[
+              { id: "current", label: <>{`Current`}{currentCount > 0 && <span className="tab-badge">{currentCount}</span>}</> },
+              { id: "new", label: <>{`New`}{newCount > 0 && <span className="tab-badge">{newCount}</span>}</> },
+              { id: "done", label: "Done" },
+              { id: "all", label: "All" },
+            ]}
+            active={filter}
+            onChange={setFilter}
+            className="feed-tab-bar"
+          />
 
           <div className="feed">
             {stackedItems.map((entry, index) =>
