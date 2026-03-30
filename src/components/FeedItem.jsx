@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Paperclip, MessageCircle, X } from "lucide-react";
+import { Paperclip, MessageCircle, Check, X, ThumbsUp, ThumbsDown } from "lucide-react";
+import { sendReaction, updateFeedStatus } from "../api/client.js";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -232,15 +233,6 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
       tabIndex={0}
       role="button"
     >
-      {onDismiss && (
-        <button
-          className="feed-item-dismiss"
-          onClick={(e) => { e.stopPropagation(); onDismiss(item.id); }}
-          aria-label="Dismiss"
-        >
-          <X size={14} />
-        </button>
-      )}
       {cardImage && (layout === "hero" || layout === "featured") && (
         <div className={`feed-item-hero-image${layout === "featured" ? " feed-item-featured-image" : ""}`}>
           <img src={cardImage} alt={cardImageAlt} loading="lazy" crossOrigin="anonymous" />
@@ -261,22 +253,68 @@ export default function FeedItem({ item, stackedItems, unreadThread, unreadThrea
           />
         </div>
       )}
-      <div className="feed-item-footer" style={{ background: `${item.workspace_color}25` }}>
-        <span className="feed-item-workspace">{item.workspace_name}</span>
-        {attachments.length > 0 && (
-          <span className="feed-item-attachments">
-            <Paperclip size={12} />
-            {attachments.length}
-          </span>
-        )}
-        {threadCount > 0 && (
-          <span className="feed-item-thread-count">
-            <MessageCircle size={12} />
-            {threadCount}
-          </span>
-        )}
-        <span className="feed-item-time">{timeAgo(item.timestamp)}</span>
-      </div>
+      <FeedItemFooter item={item} attachments={attachments} threadCount={threadCount} onDismiss={onDismiss} />
     </article>
+  );
+}
+
+function FeedItemFooter({ item, attachments, threadCount, onDismiss }) {
+  const storageKey = `reaction:${item.id}`;
+  const [reaction, setReaction] = useState(() => localStorage.getItem(storageKey));
+
+  function handleReaction(type, e) {
+    e.stopPropagation();
+    if (reaction) return;
+    setReaction(type);
+    localStorage.setItem(storageKey, type);
+    sendReaction(item.workspace, type, item).catch(console.error);
+    updateFeedStatus(item.id, "engaged").catch(console.error);
+  }
+
+  return (
+    <div className="feed-item-footer" style={{ background: `${item.workspace_color}25` }}>
+      <span className="feed-item-reactions">
+        <button
+          className={`feed-reaction-btn${reaction === "up" ? " active" : ""}`}
+          onClick={(e) => handleReaction("up", e)}
+          aria-label="Like"
+          disabled={!!reaction}
+        >
+          <ThumbsUp size={13} />
+        </button>
+        <button
+          className={`feed-reaction-btn${reaction === "down" ? " active" : ""}`}
+          onClick={(e) => handleReaction("down", e)}
+          aria-label="Dislike"
+          disabled={!!reaction}
+        >
+          <ThumbsDown size={13} />
+        </button>
+        {onDismiss && (
+          <button
+            className="feed-reaction-btn feed-done-btn"
+            onClick={(e) => { e.stopPropagation(); onDismiss(item.id); }}
+            aria-label="Mark done"
+          >
+            <Check size={14} />
+          </button>
+        )}
+      </span>
+      {attachments.length > 0 && (
+        <span className="feed-item-attachments">
+          <Paperclip size={12} />
+          {attachments.length}
+        </span>
+      )}
+      {threadCount > 0 && (
+        <span className="feed-item-thread-count">
+          <MessageCircle size={12} />
+          {threadCount}
+        </span>
+      )}
+      <span className="feed-item-workspace">{item.workspace_name}</span>
+      <span className="feed-item-separator">·</span>
+      <span className="feed-item-time">{timeAgo(item.timestamp)}</span>
+    </div>
   );
 }

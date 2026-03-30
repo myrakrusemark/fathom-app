@@ -39,6 +39,13 @@ export function restoreFeedItem(itemId) {
   return request(`/api/feed/dismiss/${encodeURIComponent(itemId)}`, { method: "DELETE" });
 }
 
+export function updateFeedStatus(itemId, status) {
+  return request(`/api/feed/${encodeURIComponent(itemId)}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
 export function getRoutines() {
   return request("/api/routines");
 }

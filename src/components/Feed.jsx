@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { MessageCircle, ChevronDown, Image } from "lucide-react";
+import { MessageCircle, Image } from "lucide-react";
 import { getFeed, listRooms, dismissFeedItem, restoreFeedItem, fireRoutine } from "../api/client.js";
 import { notify } from "../lib/notify.js";
 import { getHumanUser } from "../lib/connection.js";
@@ -47,7 +47,7 @@ export default function Feed({
   wallpaper = null,
 }) {
   const [allItems, setAllItems] = useState([]);
-  const [earlierOpen, setEarlierOpen] = useState(false);
+  const [filter, setFilter] = useState("current");
   const [loading, setLoading] = useState(true);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [unreadThreads, setUnreadThreads] = useState(new Set());
@@ -68,13 +68,13 @@ export default function Feed({
   const handleDismiss = useCallback((itemId) => {
     // Track locally so poll can't overwrite with stale server data
     localDismissedRef.current.add(itemId);
-    // Optimistically mark as dismissed in local state
+    // Optimistically mark as resolved in local state
     setAllItems((prev) => {
       const updated = prev.map((item) =>
-        item.id === itemId ? { ...item, dismissed: true } : item
+        item.id === itemId ? { ...item, status: "resolved", dismissed: true } : item
       );
-      // Fire Scout when the last undismissed card is dismissed
-      const remaining = updated.filter((item) => !item.dismissed);
+      // Fire Scout when the last non-resolved card is dismissed
+      const remaining = updated.filter((item) => item.status !== "resolved");
       if (remaining.length === 0) {
         fireRoutine("scout-curate").catch(() => {});
       }
@@ -85,19 +85,24 @@ export default function Feed({
     dismissFeedItem(itemId).catch(console.error);
   }, [selectedItemId]);
 
-  // Split items into new (undismissed) and earlier (dismissed)
-  const { newItems, earlierItems } = useMemo(() => {
-    const n = [];
-    const e = [];
-    for (const item of allItems) {
-      if (item.dismissed) {
-        e.push(item);
-      } else {
-        n.push(item);
-      }
+  // Filter items by behavioral status
+  const filteredItems = useMemo(() => {
+    switch (filter) {
+      case "new": return allItems.filter((i) => (i.status || "new") === "new");
+      case "current": return allItems.filter((i) => (i.status || "new") !== "resolved");
+      case "done": return allItems.filter((i) => (i.status || "new") === "resolved");
+      case "all": return allItems;
+      default: return allItems.filter((i) => (i.status || "new") !== "resolved");
     }
-    return { newItems: n, earlierItems: e };
-  }, [allItems]);
+  }, [allItems, filter]);
+
+  // Counts for filter tabs
+  const filterCounts = useMemo(() => ({
+    new: allItems.filter((i) => (i.status || "new") === "new").length,
+    current: allItems.filter((i) => (i.status || "new") !== "resolved").length,
+    done: allItems.filter((i) => (i.status || "new") === "resolved").length,
+    all: allItems.length,
+  }), [allItems]);
 
   // Resolve selected item from ID
   const selectedItem = useMemo(
@@ -105,8 +110,8 @@ export default function Feed({
     [allItems, selectedItemId]
   );
 
-  // Stack computation — only recompute when newItems changes (not on every Feed render)
-  const stackedNewItems = useMemo(() => stackByWorkspace(newItems), [newItems]);
+  // Stack computation — only recompute when filteredItems changes (not on every Feed render)
+  const stackedItems = useMemo(() => stackByWorkspace(filteredItems), [filteredItems]);
 
   // Fetch feed — extracted so pull-to-refresh can call it directly
   const fetchFeed = useCallback(() => {
@@ -116,13 +121,13 @@ export default function Feed({
         // poll responses from overwriting optimistic dismiss state
         const items = (data.items || []).map((item) =>
           localDismissedRef.current.has(item.id)
-            ? { ...item, dismissed: true }
+            ? { ...item, status: "resolved", dismissed: true }
             : item
         );
-        // Notify for new undismissed items (skip first load)
+        // Notify for new non-resolved items (skip first load)
         if (knownItemIdsRef.current !== null) {
           const fresh = items.filter(
-            (item) => !item.dismissed && !knownItemIdsRef.current.has(item.id)
+            (item) => (item.status || "new") !== "resolved" && !knownItemIdsRef.current.has(item.id)
           );
           if (fresh.length === 1) {
             notify(fresh[0].title || fresh[0].workspace || "New update", {
@@ -172,8 +177,8 @@ export default function Feed({
             if (room.message_count > 0) {
               counts.set(itemId, room.message_count);
             }
-            // Mark unread for dot indicator when workspace responded (not when user sent)
-            if (room.unread_count > 0 && room.last_sender !== humanUser) {
+            // Mark unread for dot indicator when workspace responded (not when user or system sent)
+            if (room.unread_count > 0 && room.last_sender !== humanUser && room.last_sender !== "system") {
               unread.add(itemId);
               // Only restore dismissed items when the thread has *new* activity since
               // last poll — not just because it has old unread messages
@@ -187,15 +192,15 @@ export default function Feed({
           setThreadCounts(counts);
           prevThreadCountsRef.current = counts;
           initialRoomPollRef.current = false;
-          // Auto-restore dismissed items when workspace adds to the thread
+          // Auto-restore resolved items when workspace adds to the thread
           if (restoreIds.length > 0) {
             setAllItems((prev) => {
               let changed = false;
               const updated = prev.map((item) => {
-                if (item.dismissed && restoreIds.includes(item.id)) {
+                if (item.status === "resolved" && restoreIds.includes(item.id)) {
                   changed = true;
                   localDismissedRef.current.delete(item.id);
-                  return { ...item, dismissed: false };
+                  return { ...item, status: "new", dismissed: false };
                 }
                 return item;
               });
@@ -308,8 +313,28 @@ export default function Feed({
             </div>
           )}
 
+          <div className="feed-filter-bar">
+            {[
+              { key: "current", label: "Current" },
+              { key: "new", label: "New" },
+              { key: "done", label: "Done" },
+              { key: "all", label: "All" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                className={`feed-filter-tab${filter === f.key ? " active" : ""}`}
+                onClick={() => setFilter(f.key)}
+              >
+                {f.label}
+                {filterCounts[f.key] > 0 && (
+                  <span className="feed-filter-count">{filterCounts[f.key]}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
           <div className="feed">
-            {stackedNewItems.map((entry, index) =>
+            {stackedItems.map((entry, index) =>
               entry.stacked ? (
                 <FeedItem key={entry.items[0].id} item={entry.items[0]} stackedItems={entry.items} unreadThreads={unreadThreads} threadCounts={threadCounts} onSelect={(item) => setSelectedItemId(item.id)} onDismiss={handleDismiss} />
               ) : (
@@ -333,31 +358,7 @@ export default function Feed({
             />
           )}
 
-          {initialLoadDone && <FeedEmpty hasNotifications={newItems.length > 0} />}
-
-          {earlierItems.length > 0 && (
-            <div className="feed-earlier">
-              <button
-                className="feed-earlier-toggle"
-                onClick={() => setEarlierOpen(!earlierOpen)}
-              >
-                <span className="feed-earlier-label">
-                  Earlier · {earlierItems.length}
-                  <ChevronDown
-                    size={14}
-                    className={`feed-earlier-chevron ${earlierOpen ? "open" : ""}`}
-                  />
-                </span>
-              </button>
-              {earlierOpen && (
-                <div className="feed feed-earlier-items">
-                  {earlierItems.map((item) => (
-                    <FeedItem key={item.id} item={item}onSelect={(i) => setSelectedItemId(i.id)} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {initialLoadDone && <FeedEmpty hasNotifications={filteredItems.length > 0} />}
         </>
     </div>
   );

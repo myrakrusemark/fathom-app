@@ -9,7 +9,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { feedSanitizeSchema } from "../lib/sanitize.js";
 import PhotoSwipeLightbox from "photoswipe/lightbox";
 import "photoswipe/style.css";
-import { sendReaction, postToRoom, readRoom } from "../api/client.js";
+import { sendReaction, postToRoom, readRoom, updateFeedStatus } from "../api/client.js";
 import { getHumanUser } from "../lib/connection.js";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ChatMessage from "./ChatMessage.jsx";
@@ -162,6 +162,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
           ...prev,
           { id: `local-${Date.now()}`, sender: getHumanUser(), text, timestamp: new Date().toISOString() },
         ]);
+        updateFeedStatus(item.id, "engaged").catch(console.error);
       })
       .catch(console.error)
       .finally(() => setSending(false));
@@ -174,6 +175,7 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
     setSent(true);
     localStorage.setItem(storageKey, type);
     sendReaction(item.workspace, type, item).catch(console.error);
+    updateFeedStatus(item.id, "engaged").catch(console.error);
   }
 
   const attachments = item.attachments || [];
