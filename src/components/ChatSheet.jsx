@@ -378,6 +378,8 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
   const [pendingPreview, setPendingPreview] = useState(null);
   const [waitingForReply, setWaitingForReply] = useState(false);
   const bottomRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const userScrolledUpRef = useRef(false);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const sheetRef = useRef(null);
@@ -433,14 +435,15 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
       const chatMsgs = roomMsgs.map(roomMsgToChatMsg);
       if (chatMsgs.length === 0) return;
       setMessages((prev) => {
-        let base = [...prev];
-        // Check if any new agent messages arrived — clear waiting state
-        const existingIds = new Set(base.map((m) => m.id));
+        const existingIds = new Set(prev.map((m) => m.id));
         const fresh = chatMsgs.filter((m) => !existingIds.has(m.id));
+        // No new messages — return same reference to avoid spurious re-render + scroll
+        if (fresh.length === 0) return prev;
         if (fresh.some((m) => m.role === "agent")) {
           setWaitingForReply(false);
         }
         // Deduplicate optimistic local messages
+        let base = [...prev];
         for (const msg of fresh) {
           if (msg.role === "user") {
             const localIdx = base.findIndex((m) => m.id.startsWith("local-") && m.text === msg.text);
@@ -630,6 +633,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
       setMessages([]);
       setIsProcessing(false);
       setWaitingForReply(false);
+      userScrolledUpRef.current = false;
       if (isDmMode) {
         loadDmHistory();
         // Start polling every 3s for messages
@@ -655,8 +659,17 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
     };
   }, [open, activeWorkspace, isDmMode, connectWs, disconnectWs, loadDmHistory, pollDm]);
 
+  function handleMessagesScroll() {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    userScrolledUpRef.current = distanceFromBottom > 80;
+  }
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!userScrolledUpRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, isProcessing, waitingForReply]);
 
   useEffect(() => {
@@ -679,6 +692,9 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
     setInput("");
     setPendingFile(null);
     setSending(true);
+
+    // User sent — scroll to bottom
+    userScrolledUpRef.current = false;
 
     // Optimistically add user message
     const userMsg = {
@@ -780,7 +796,7 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
             <X size={20} />
           </button>
         </div>
-        <div className="chat-sheet-messages">
+        <div className="chat-sheet-messages" ref={messagesContainerRef} onScroll={handleMessagesScroll}>
           {groupedMessages}
           {(isProcessing || waitingForReply) && (
             <div className="chat-working">

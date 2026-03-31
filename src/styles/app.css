@@ -557,6 +557,23 @@ body {
   object-fit: cover;
   display: block;
 }
+.wallpaper-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: none;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  transition: color 0.15s, background 0.15s;
+}
+.wallpaper-download:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.12);
+}
 
 .feed-item-audio-list {
   display: flex;

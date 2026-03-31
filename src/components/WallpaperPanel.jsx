@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { X, Send } from "lucide-react";
+import { X, Send, Download } from "lucide-react";
 import { postToRoom, readRoom } from "../api/client.js";
 import { getHumanUser } from "../lib/connection.js";
 import ChatMessage from "./ChatMessage.jsx";
@@ -88,6 +88,16 @@ export default function WallpaperPanel({ wallpaper, onClose }) {
           </div>
 
           <h2 className="feed-panel-title">Why this wallpaper?</h2>
+
+          {wallpaper.url && (
+            <div className="feed-panel-hero-image">
+              <img src={wallpaper.url} alt="Current wallpaper" loading="lazy" crossOrigin="anonymous" />
+              <a className="wallpaper-download" href={wallpaper.url} download target="_blank" rel="noopener noreferrer">
+                <Download size={14} />
+                <span>Download</span>
+              </a>
+            </div>
+          )}
 
           <div className="feed-panel-body">
             <p>{wallpaper.reason}</p>
