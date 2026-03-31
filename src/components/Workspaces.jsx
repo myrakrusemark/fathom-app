@@ -14,20 +14,6 @@ function TypingDots() {
   );
 }
 
-function getProfileStatus(profile) {
-  if (profile.enabled === false) {
-    return { status: "disabled", label: "disabled" };
-  }
-  const now = Date.now() / 1000;
-  const lastEvent = profile.last_event_at || 0;
-  const isStreaming = lastEvent > 0 && (now - lastEvent) < 30;
-  if (isStreaming) {
-    return { status: "streaming", label: "streaming" };
-  }
-  return { status: "ready", label: "ready" };
-}
-
-
 function BrowserTabs({ sessions, vncUrl }) {
   if (!sessions || sessions.length === 0) return null;
   return (
@@ -58,7 +44,8 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions,
   const wsColor = workspace.color || "#888";
   const displayName = workspace.display_name || prettyName(name);
   const description = workspace.description || "";
-  const { status, label: statusLabel } = getProfileStatus(workspace);
+  const status = workspace.status || "ready";
+  const statusLabel = status;
   const hasAgent = workspace.agents && workspace.agents.length > 0;
   const isDisabled = workspace.enabled === false;
 
@@ -129,7 +116,8 @@ function WorkspaceDetailPanel({ name, workspace, onClose, isPrimary }) {
 
   const wsColor = workspace.color || "#888";
   const displayName = workspace.display_name || prettyName(name);
-  const { status, label: statusLabel } = getProfileStatus(workspace);
+  const status = workspace.status || "ready";
+  const statusLabel = status;
   const lastHeartbeat = workspace.last_heartbeat ? timeAgo(workspace.last_heartbeat) : null;
 
   return (
@@ -278,8 +266,8 @@ export default function Workspaces({ onOpenChat }) {
     ? Object.entries(workspaces.profiles || {})
         .filter(([, v]) => typeof v === "object" && v.type !== "human")
         .sort((a, b) => {
-          const sa = getProfileStatus(a[1]).status;
-          const sb = getProfileStatus(b[1]).status;
+          const sa = a[1].status || "ready";
+          const sb = b[1].status || "ready";
           const order = { streaming: 0, ready: 1, disabled: 2 };
           return (order[sa] ?? 1) - (order[sb] ?? 1);
         })
