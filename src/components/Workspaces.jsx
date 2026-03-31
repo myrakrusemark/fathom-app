@@ -5,6 +5,9 @@ import { RoutineRow } from "./Routines.jsx";
 import { timeAgo, prettyName } from "../lib/formatters.js";
 
 function getProfileStatus(profile) {
+  if (profile.enabled === false) {
+    return { status: "disabled", color: "rgba(168,162,158,0.3)", label: "disabled", pulse: false };
+  }
   const { execution, process, connected } = profile;
   if (execution === "local") {
     if (process && connected) return { status: "running", color: "#4ADE80", label: "active", pulse: false };
@@ -50,16 +53,18 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions,
   const description = workspace.description || "";
   const { color: statusColor, label: statusLabel, pulse } = getProfileStatus(workspace);
   const hasAgent = workspace.agents && workspace.agents.length > 0;
+  const isDisabled = workspace.enabled === false;
 
   return (
     <div>
-      <div className="workspace-card" onClick={() => onSelect(name, workspace)}>
+      <div className={`workspace-card${isDisabled ? " disabled" : ""}`} onClick={() => onSelect(name, workspace)}>
         <div className="workspace-card-header">
           <div className="workspace-card-names">
             <span className="workspace-card-name-row">
               <span className="workspace-color-dot" style={{ background: wsColor }} />
               {displayName}
               {isPrimary && <span className="workspace-badge primary">Primary</span>}
+              {isDisabled && <span className="workspace-badge disabled">Disabled</span>}
               {workspace.ssh && <span className="workspace-badge ssh">SSH</span>}
               {workspace.browser && <span className="workspace-badge browser">Browser</span>}
             </span>
