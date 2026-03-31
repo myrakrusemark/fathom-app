@@ -26,7 +26,7 @@ export function getWorkspace() {
 export function getFastFathomUrl() {
   const conn = getConnection();
   if (!conn) return null;
-  return `${conn.serverUrl}/fast-fathom`;
+  return `${conn.serverUrl}/fast-fathom/`;
 }
 
 export function getThemes() {
