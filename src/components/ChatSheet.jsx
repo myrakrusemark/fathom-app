@@ -106,12 +106,12 @@ function eventToMessages(event, currentWorkspace) {
           out.push({ id, role: "agent", type: "voice", text: block.input.text, duration: 0, audio_url: null, timestamp: ts, memories: 0, _toolId: block.id });
         } else {
           out.push({ id, role: "agent", type: "tool", name: toolName, input: block.input || null, status: "done", timestamp: ts });
-          // DM send via bash script — parse fathom-send.sh or fathom-room-post.sh to dm: room
+          // DM send via bash — fathom send / fathom room post (or legacy .sh scripts)
           if (toolName === "Bash" && block.input?.command) {
             const cmd = block.input.command;
             const quoteArg = `(?:"((?:[^"\\\\]|\\\\.)*)"|'((?:[^'\\\\]|\\\\.)*)'|(\\S+))`;
-            // fathom-send.sh <workspace> <message>
-            const sendMatch = cmd.match(new RegExp(`fathom-send\\.sh\\s+(\\S+)\\s+${quoteArg}`));
+            // fathom send <workspace> <message> (or legacy fathom-send.sh)
+            const sendMatch = cmd.match(new RegExp(`fathom(?:-send\\.sh|\\s+send)\\s+(\\S+)\\s+${quoteArg}`));
             if (sendMatch) {
               const dmTarget = sendMatch[1];
               const dmText = (sendMatch[2] || sendMatch[3] || sendMatch[4] || "").replace(/\\(.)/g, "$1");
@@ -119,8 +119,8 @@ function eventToMessages(event, currentWorkspace) {
                 out.push({ id: `${id}-dm`, role: "agent", type: "text", text: dmText, timestamp: ts, memories: 0, dmTo: dmTarget });
               }
             } else {
-              // fathom-room-post.sh "dm:a+b" <message>
-              const roomPostMatch = cmd.match(new RegExp(`fathom-room-post\\.sh\\s+${quoteArg}\\s+${quoteArg}`));
+              // fathom room post "dm:a+b" <message> (or legacy fathom-room-post.sh)
+              const roomPostMatch = cmd.match(new RegExp(`fathom(?:-room-post\\.sh|\\s+room\\s+post)\\s+${quoteArg}\\s+${quoteArg}`));
               if (roomPostMatch) {
                 const room = (roomPostMatch[1] || roomPostMatch[2] || roomPostMatch[3] || "").replace(/\\(.)/g, "$1");
                 if (room.startsWith("dm:")) {
