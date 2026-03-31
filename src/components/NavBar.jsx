@@ -1,12 +1,12 @@
 import { useRef, useState, useCallback } from "react";
 import { NavLink } from "react-router-dom";
-import { Home, MessageCircle, Mic, Settings, PanelLeft } from "lucide-react";
+import { Home, MessageCircle, Mic, Settings, PanelLeft, Zap } from "lucide-react";
 import { isConnected } from "../lib/connection.js";
 import { sendVoice } from "../api/client.js";
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unreadCount = 0, showBackstage = false }) {
+export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, onFastFathomOpen, unreadCount = 0, showBackstage = false }) {
   const [listening, setListening] = useState(false);
   const holdTimer = useRef(null);
   const recognitionRef = useRef(null);
@@ -102,6 +102,11 @@ export default function NavBar({ onChatOpen, onVoiceResult, onSettingsOpen, unre
           <MessageCircle size={22} />
         )}
       </button>
+      {onFastFathomOpen && (
+        <button className="nav-fast-btn" onClick={onFastFathomOpen} aria-label="Fast Fathom">
+          <Zap size={20} />
+        </button>
+      )}
       {showBackstage && (
         <NavLink to="/backstage" className={({ isActive }) => isActive ? "nav-item backstage-tab active" : "nav-item backstage-tab"}>
           <PanelLeft size={24} />

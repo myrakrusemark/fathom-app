@@ -23,6 +23,18 @@ export function getWorkspace() {
   return conn?.primaryWorkspace || "fathom";
 }
 
+export function getFastFathomUrl() {
+  const conn = getConnection();
+  if (!conn) return null;
+  try {
+    const url = new URL(conn.serverUrl);
+    url.port = "3748";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
 export function getThemes() {
   return request("/api/themes");
 }

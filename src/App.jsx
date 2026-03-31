@@ -1,13 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { isConnected, detectSameOrigin, saveConnection, getConnection } from "./lib/connection.js";
-import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm, getThemes, readRoom } from "./api/client.js";
+import { getOnboardingStatus, submitOnboarding, getDmUnreadCount, sendDm, getThemes, readRoom, getFastFathomUrl } from "./api/client.js";
 import { applyTheme } from "./lib/theme.js";
 import { requestNotificationPermission } from "./lib/notify.js";
 import Feed from "./components/Feed.jsx";
 import Routines from "./components/Routines.jsx";
 import Backstage from "./components/Backstage.jsx";
 import ChatSheet from "./components/ChatSheet.jsx";
+import FastFathomSheet from "./components/FastFathomSheet.jsx";
 import NavBar from "./components/NavBar.jsx";
 import Onboarding from "./components/Onboarding.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
@@ -29,6 +30,7 @@ export default function App() {
   const [themes, setThemes] = useState([]);
   const [themeName, setThemeName] = useState(() => localStorage.getItem('fathom-theme') || null);
   const [showBackstage, setShowBackstage] = useState(() => localStorage.getItem('fathom-show-backstage') === 'true');
+  const [fastFathomOpen, setFastFathomOpen] = useState(false);
 
   // Setup phase: "loading" | "packages" | "onboarding" | "done"
   const [setupPhase, setSetupPhase] = useState("loading");
@@ -295,6 +297,7 @@ export default function App() {
           onChatOpen={() => { setChatWorkspace(null); setUnreadCount(0); setChatOpen(true); }}
           onVoiceResult={handleVoiceResult}
           onSettingsOpen={() => setSettingsOpen(true)}
+          onFastFathomOpen={() => setFastFathomOpen(true)}
           unreadCount={unreadCount}
           showBackstage={showBackstage}
         />
@@ -305,6 +308,11 @@ export default function App() {
           pendingVoice={pendingVoice}
           onUnread={(count) => setUnreadCount((prev) => prev + count)}
           workspace={chatWorkspace}
+        />
+        <FastFathomSheet
+          open={fastFathomOpen}
+          onClose={() => setFastFathomOpen(false)}
+          url={getFastFathomUrl()}
         />
         <SettingsModal
           open={settingsOpen}
