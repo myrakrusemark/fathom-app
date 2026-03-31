@@ -287,7 +287,7 @@ export default function Feed({
     <div className="page" ref={pageRef}>
       <header className="page-header">
         <h1><span className="c-teal">fa</span><span className="c-purple">th</span><span className="c-orange">o</span><span className="c-green">m</span></h1>
-        <span className="header-subtitle">updates</span>
+        <span className="header-subtitle">feed</span>
         {wallpaper?.reason && (
           <button className="tour-replay-btn" onClick={() => setWallpaperOpen(true)} aria-label="Wallpaper info">
             <Image size={16} />

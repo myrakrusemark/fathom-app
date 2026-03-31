@@ -1,23 +1,30 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, X } from "lucide-react";
+import { MessageCircle, X } from "lucide-react";
 import { getWorkspaceProfiles, getRoutines, fireRoutine, getBrowserSessions } from "../api/client.js";
 import { RoutineRow } from "./Routines.jsx";
 import { timeAgo, prettyName } from "../lib/formatters.js";
 
+function TypingDots() {
+  return (
+    <span className="workspace-typing-dots">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
 function getProfileStatus(profile) {
   if (profile.enabled === false) {
-    return { status: "disabled", color: "rgba(168,162,158,0.3)", label: "disabled", pulse: false };
+    return { status: "disabled", label: "disabled" };
   }
-  const { execution, process, connected } = profile;
-  if (execution === "local") {
-    if (process && connected) return { status: "running", color: "#4ADE80", label: "active", pulse: false };
-    if (process) return { status: "process-only", color: "#FBBF24", label: "busy", pulse: true };
-    if (connected) return { status: "ws-only", color: "#FBBF24", label: "idle", pulse: true };
-    return { status: "offline", color: "rgba(168,212,180,0.3)", label: "offline", pulse: false };
+  const now = Date.now() / 1000;
+  const lastEvent = profile.last_event_at || 0;
+  const isStreaming = lastEvent > 0 && (now - lastEvent) < 30;
+  if (isStreaming) {
+    return { status: "streaming", label: "streaming" };
   }
-  // execution === "none" or other
-  if (connected) return { status: "running", color: "#4ADE80", label: "active", pulse: false };
-  return { status: "offline", color: "rgba(168,212,180,0.3)", label: "offline", pulse: false };
+  return { status: "ready", label: "ready" };
 }
 
 
@@ -51,42 +58,41 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions,
   const wsColor = workspace.color || "#888";
   const displayName = workspace.display_name || prettyName(name);
   const description = workspace.description || "";
-  const { color: statusColor, label: statusLabel, pulse } = getProfileStatus(workspace);
+  const { status, label: statusLabel } = getProfileStatus(workspace);
   const hasAgent = workspace.agents && workspace.agents.length > 0;
   const isDisabled = workspace.enabled === false;
 
   return (
     <div>
-      <div className={`workspace-card${isDisabled ? " disabled" : ""}`} onClick={isDisabled ? undefined : () => onSelect(name, workspace)}>
-        <div className="workspace-card-header">
-          <div className="workspace-card-names">
-            <span className="workspace-card-name-row">
-              <span className="workspace-color-dot" style={{ background: wsColor }} />
-              {displayName}
-              {isPrimary && <span className="workspace-badge primary">Primary</span>}
-              {isDisabled && <span className="workspace-badge disabled">Disabled</span>}
-              {workspace.ssh && <span className="workspace-badge ssh">SSH</span>}
-              {workspace.browser && <span className="workspace-badge browser">Browser</span>}
-            </span>
+      <div
+        className={`workspace-card${isDisabled ? " disabled" : ""}`}
+        style={{ backgroundImage: `linear-gradient(${wsColor}35, ${wsColor}35)` }}
+        onClick={isDisabled ? undefined : () => onSelect(name, workspace)}
+      >
+        <div className="workspace-card-content">
+          <span className="workspace-card-name-row">
+            {displayName}
             <span className="workspace-card-slug">{name}</span>
-          </div>
-          <div className="workspace-card-actions">
-            {hasAgent && onOpenChat && (
-              <button
-                className="workspace-chat-btn"
-                onClick={(e) => { e.stopPropagation(); onOpenChat(name); }}
-                aria-label={`Chat with ${displayName}`}
-              >
-                <MessageSquare size={16} />
-              </button>
-            )}
-            <div className="workspace-status-indicator">
-              <span className={`workspace-status-dot${pulse ? " pulse" : ""}`} style={{ background: statusColor }} />
+            {isDisabled && <span className="workspace-badge disabled">Disabled</span>}
+          </span>
+          <span className="workspace-card-badges">
+            {isPrimary && <span className="workspace-badge primary">Primary</span>}
+            {workspace.ssh && <span className="workspace-badge ssh">SSH</span>}
+            {workspace.browser && <span className="workspace-badge browser">Browser</span>}
+          </span>
+          {description && <p className="workspace-card-desc">{description}</p>}
+        </div>
+        <div
+          className={`workspace-card-sidebar${hasAgent && onOpenChat ? " clickable" : ""}`}
+          onClick={hasAgent && onOpenChat ? (e) => { e.stopPropagation(); onOpenChat(name); } : undefined}
+        >
+          <MessageCircle size={16} className="workspace-chat-icon" />
+          <div className="workspace-status-indicator">
+            {status === "streaming" ? <TypingDots /> : (
               <span className="workspace-status-label">{statusLabel}</span>
-            </div>
+            )}
           </div>
         </div>
-        {description && <p className="workspace-card-desc">{description}</p>}
       </div>
       {workspace.browser && <BrowserTabs sessions={browserSessions} vncUrl={vncUrl} />}
     </div>
@@ -123,37 +129,32 @@ function WorkspaceDetailPanel({ name, workspace, onClose, isPrimary }) {
 
   const wsColor = workspace.color || "#888";
   const displayName = workspace.display_name || prettyName(name);
-  const { color: statusColor, label: statusLabel, pulse } = getProfileStatus(workspace);
-  const lastPing = workspace.last_ping ? timeAgo(workspace.last_ping) : null;
+  const { status, label: statusLabel } = getProfileStatus(workspace);
   const lastHeartbeat = workspace.last_heartbeat ? timeAgo(workspace.last_heartbeat) : null;
 
   return (
     <div className={`feed-panel-backdrop ${visible ? "visible" : ""}`} onClick={handleClose}>
-      <div className={`feed-panel ${visible ? "visible" : ""}`} onClick={(e) => e.stopPropagation()}>
+      <div className={`feed-panel ${visible ? "visible" : ""}`} style={{ backgroundImage: `linear-gradient(${wsColor}35, ${wsColor}35)` }} onClick={(e) => e.stopPropagation()}>
         <div className="feed-panel-scroll">
-          <div className="feed-panel-top-actions">
-            <button className="feed-panel-close" onClick={handleClose} aria-label="Close">
-              <X size={20} />
+          <div className="feed-panel-header">
+            <button className="feed-panel-dismiss" onClick={handleClose} aria-label="Close">
+              <X size={14} />
+              <span>Close</span>
             </button>
           </div>
 
           <div className="workspace-detail-header">
             <div>
               <h2 className="workspace-detail-name">
-                <span className="workspace-color-dot large" style={{ background: wsColor }} />
                 {displayName}
+                <span className="workspace-detail-slug">{name}</span>
+              </h2>
+              <span className="workspace-card-badges">
                 {isPrimary && <span className="workspace-badge primary">Primary</span>}
                 {workspace.ssh && <span className="workspace-badge ssh">SSH</span>}
                 {workspace.browser && <span className="workspace-badge browser">Browser</span>}
-              </h2>
-              <span className="workspace-detail-slug">{name}</span>
+              </span>
             </div>
-          </div>
-
-          <div className="workspace-detail-status">
-            <span className={`workspace-status-dot${pulse ? " pulse" : ""}`} style={{ background: statusColor }} />
-            <span className="workspace-status-label">{statusLabel}</span>
-            {lastPing && <span className="workspace-detail-ping">Last ping: {lastPing}</span>}
           </div>
 
           {workspace.description && (
@@ -161,6 +162,12 @@ function WorkspaceDetailPanel({ name, workspace, onClose, isPrimary }) {
           )}
 
           <div className="workspace-detail-fields">
+            <div className="workspace-detail-field">
+              <span className="workspace-detail-field-label">Status</span>
+              <span className="workspace-detail-field-value" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {status === "streaming" ? <TypingDots /> : statusLabel}
+              </span>
+            </div>
             <div className="workspace-detail-field">
               <span className="workspace-detail-field-label">Type</span>
               <span className="workspace-detail-field-value">{workspace.type || "synced"}</span>
@@ -252,11 +259,14 @@ export default function Workspaces({ onOpenChat }) {
       if (data.vnc_url) setVncUrl(data.vnc_url);
     }).catch(() => {});
     const interval = setInterval(() => {
+      getWorkspaceProfiles()
+        .then((data) => setWorkspaces(data))
+        .catch(() => {});
       getBrowserSessions().then((data) => {
         setBrowserSessions(data.sessions || []);
         if (data.vnc_url) setVncUrl(data.vnc_url);
       }).catch(() => {});
-    }, 5000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -267,7 +277,12 @@ export default function Workspaces({ onOpenChat }) {
   const entries = workspaces
     ? Object.entries(workspaces.profiles || {})
         .filter(([, v]) => typeof v === "object" && v.type !== "human")
-        .sort((a, b) => (a[1].enabled === false) - (b[1].enabled === false))
+        .sort((a, b) => {
+          const sa = getProfileStatus(a[1]).status;
+          const sb = getProfileStatus(b[1]).status;
+          const order = { streaming: 0, ready: 1, disabled: 2 };
+          return (order[sa] ?? 1) - (order[sb] ?? 1);
+        })
     : [];
 
   if (entries.length === 0) {

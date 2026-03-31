@@ -193,39 +193,33 @@ export function RoutineRow({ routine, onFire, onSelect }) {
   return (
     <div
       className={`routine-row ${!routine.enabled ? "disabled" : ""}`}
+      style={{ backgroundImage: `linear-gradient(${color}35, ${color}35)` }}
       onClick={() => onSelect?.(routine)}
     >
-      <div className="routine-row-main">
-        <button
-          className={`routine-play-btn ${firing ? "firing" : ""}`}
-          onClick={handleFire}
-          disabled={firing}
-          aria-label={`Fire ${routine.name}`}
-          style={{ color }}
-        >
-          {firing ? (
-            <Clock size={16} opacity={0.3} />
-          ) : (
-            <Play size={16} fill="currentColor" />
-          )}
-        </button>
-        <div className="routine-info">
-          <span className="routine-name">
-            {routine.name}
-            {routine.conditional && <span className="workspace-badge conditional">Conditional</span>}
-          </span>
+      <div className="routine-row-content">
+        <span className="routine-name">
+          {routine.name}
           <span className="routine-workspace">{routine.workspace_name}</span>
-        </div>
-        <div className="routine-timing">
-          <span className="routine-schedule">{frequencyLabel(routine)}</span>
-          <span className="routine-ago">
-            {routine.recently_fired
-              ? `fired ${timeAgo(routine.last_fire_at)}`
-              : routine.enabled
-                ? timeUntil(routine.next_ping_at)
-                : "paused"}
-          </span>
-        </div>
+          {routine.conditional && <span className="workspace-badge conditional">Conditional</span>}
+        </span>
+        <span className="routine-schedule">{frequencyLabel(routine)}</span>
+      </div>
+      <div
+        className="routine-row-sidebar"
+        onClick={handleFire}
+      >
+        {firing ? (
+          <Clock size={16} opacity={0.3} style={{ color }} />
+        ) : (
+          <Play size={16} fill={color} style={{ color }} />
+        )}
+        <span className="routine-sidebar-ago">
+          {routine.recently_fired
+            ? timeAgo(routine.last_fire_at)
+            : routine.enabled
+              ? timeUntil(routine.next_ping_at)
+              : "paused"}
+        </span>
       </div>
     </div>
   );
