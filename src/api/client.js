@@ -26,13 +26,7 @@ export function getWorkspace() {
 export function getFastFathomUrl() {
   const conn = getConnection();
   if (!conn) return null;
-  try {
-    const url = new URL(conn.serverUrl);
-    url.port = "3748";
-    return url.toString().replace(/\/$/, "");
-  } catch {
-    return null;
-  }
+  return `${conn.serverUrl}/fast-fathom`;
 }
 
 export function getThemes() {
