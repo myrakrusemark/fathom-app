@@ -4,6 +4,7 @@ import { postToRoom, readRoom } from "../api/client.js";
 import { getHumanUser } from "../lib/connection.js";
 import ChatMessage from "./ChatMessage.jsx";
 import { stripChatDecorations } from "../lib/formatters.js";
+import ChatInput from "./ChatInput.jsx";
 
 export default function WallpaperPanel({ wallpaper, onClose }) {
   const [visible, setVisible] = useState(false);
@@ -125,11 +126,11 @@ export default function WallpaperPanel({ wallpaper, onClose }) {
 
         <div className="feed-panel-bottom">
           <form className="feed-panel-input" onSubmit={handleSend}>
-            <input
+            <ChatInput
               ref={inputRef}
-              type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onSubmit={() => { if (message.trim() && !sending) handleSend({ preventDefault() {} }); }}
               placeholder="Chat about the wallpaper..."
               disabled={sending}
               autoComplete="off"

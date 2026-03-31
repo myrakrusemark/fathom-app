@@ -1092,6 +1092,18 @@ body {
   color: rgba(255, 255, 255, 0.55);
 }
 
+.chat-input-grow {
+  resize: none;
+  overflow-y: hidden;
+  max-height: calc(10lh);
+  line-height: 1.4;
+  font-family: inherit;
+  font-size: inherit;
+}
+.chat-input-grow.scrollable {
+  overflow-y: auto;
+}
+
 .chat-sheet-input {
   padding: 8px 16px calc(8px + var(--safe-bottom));
   background: var(--surface-chat-footer);
@@ -1103,7 +1115,7 @@ body {
   gap: 0;
 }
 
-.chat-sheet-input input {
+.chat-sheet-input textarea {
   flex: 1;
   background: var(--surface-input);
   border: 1px solid var(--glass-border);
@@ -1117,11 +1129,11 @@ body {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.chat-sheet-input input::placeholder {
+.chat-sheet-input textarea::placeholder {
   color: var(--text-muted);
 }
 
-.chat-sheet-input input:focus {
+.chat-sheet-input textarea:focus {
   border-color: rgba(99, 102, 241, 0.4);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
@@ -3515,7 +3527,7 @@ body {
   gap: 8px;
 }
 
-.feed-panel-input input {
+.feed-panel-input textarea {
   flex: 1;
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.7);
@@ -3529,12 +3541,12 @@ body {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.feed-panel-input input:focus {
+.feed-panel-input textarea:focus {
   border-color: rgba(99, 102, 241, 0.4);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-.feed-panel-input input::placeholder {
+.feed-panel-input textarea::placeholder {
   color: var(--text-muted);
 }
 
@@ -4819,7 +4831,7 @@ body {
   width: 100%;
   max-width: 360px;
 }
-.feed-empty-input input {
+.feed-empty-input textarea {
   flex: 1;
   min-width: 0;
   padding: 10px 14px;
@@ -4834,10 +4846,10 @@ body {
   outline: none;
   transition: border-color 0.15s;
 }
-.feed-empty-input input:focus {
+.feed-empty-input textarea:focus {
   border-color: var(--accent);
 }
-.feed-empty-input input::placeholder {
+.feed-empty-input textarea::placeholder {
   color: var(--text-muted);
 }
 .feed-empty-send {

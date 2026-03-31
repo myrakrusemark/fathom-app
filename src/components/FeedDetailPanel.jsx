@@ -15,6 +15,7 @@ import { getHumanUser } from "../lib/connection.js";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext.jsx";
 import ChatMessage from "./ChatMessage.jsx";
 import { timeAgo, stripChatDecorations, authUrl, formatSize } from "../lib/formatters.js";
+import ChatInput from "./ChatInput.jsx";
 
 function FeedAudioItem({ att }) {
   const { play, pause, playing, track } = useAudioPlayer();
@@ -314,11 +315,11 @@ export default function FeedDetailPanel({ item, onClose, onDismiss }) {
             onDismiss={onDismiss ? () => { onDismiss(); handleClose(); } : null}
           />
           <form className="feed-panel-input" onSubmit={handleSend}>
-            <input
+            <ChatInput
               ref={inputRef}
-              type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onSubmit={() => { if (message.trim() && !sending) handleSend({ preventDefault() {} }); }}
               placeholder={`Chat about this with ${item.workspace_name || "fathom"}...`}
               disabled={sending}
               autoComplete="off"

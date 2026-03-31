@@ -5,6 +5,7 @@ import { notify } from "../lib/notify.js";
 import { getHumanUser } from "../lib/connection.js";
 import ChatMessage, { ToolGroup } from "./ChatMessage.jsx";
 import { formatSize } from "../lib/formatters.js";
+import ChatInput from "./ChatInput.jsx";
 
 function FreshChatMessages() {
   return [
@@ -852,11 +853,11 @@ export default function ChatSheet({ open, onClose, consumeVoice, pendingVoice, o
                 <Paperclip size={20} />
               </button>
             )}
-            <input
+            <ChatInput
               ref={inputRef}
-              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onSubmit={() => { if (input.trim() && !sending) handleSend({ preventDefault() {} }); }}
               placeholder="say something..."
               disabled={sending}
               autoComplete="off"

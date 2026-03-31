@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Send, Clock, Newspaper, TrendingUp, ShoppingBag, FileText, Sun, RefreshCw, ThumbsUp, ThumbsDown, MessageCircle } from "lucide-react";
 import { readRoom, postToRoom, fireRoutine } from "../api/client.js";
 import { getHumanUser, getHumanDisplayName } from "../lib/connection.js";
+import ChatInput from "./ChatInput.jsx";
 
 const ICON_MAP = {
   "📰": Newspaper, "📈": TrendingUp, "🛍️": ShoppingBag, "🛍": ShoppingBag,
@@ -164,12 +165,12 @@ export default function FeedEmpty() {
       )}
 
       <form className="feed-empty-input" onSubmit={handleCustom}>
-        <input
+        <ChatInput
           ref={inputRef}
-          type="text"
-          placeholder="Or tell me what you need..."
           value={customText}
           onChange={(e) => setCustomText(e.target.value)}
+          onSubmit={() => { if (customText.trim()) handleCustom({ preventDefault() {} }); }}
+          placeholder="Or tell me what you need..."
         />
         <button
           type="submit"
