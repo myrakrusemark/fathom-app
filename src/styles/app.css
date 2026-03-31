@@ -4106,6 +4106,8 @@ body {
 }
 .workspace-card.disabled {
   opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
 }
 .workspace-badge.disabled {
   background: rgba(168, 162, 158, 0.15);

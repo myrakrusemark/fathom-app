@@ -57,7 +57,7 @@ function WorkspaceCard({ name, workspace, onSelect, onOpenChat, browserSessions,
 
   return (
     <div>
-      <div className={`workspace-card${isDisabled ? " disabled" : ""}`} onClick={() => onSelect(name, workspace)}>
+      <div className={`workspace-card${isDisabled ? " disabled" : ""}`} onClick={isDisabled ? undefined : () => onSelect(name, workspace)}>
         <div className="workspace-card-header">
           <div className="workspace-card-names">
             <span className="workspace-card-name-row">
