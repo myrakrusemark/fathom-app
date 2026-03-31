@@ -267,6 +267,7 @@ export default function Workspaces({ onOpenChat }) {
   const entries = workspaces
     ? Object.entries(workspaces.profiles || {})
         .filter(([, v]) => typeof v === "object" && v.type !== "human")
+        .sort((a, b) => (a[1].enabled === false) - (b[1].enabled === false))
     : [];
 
   if (entries.length === 0) {
